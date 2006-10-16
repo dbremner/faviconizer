@@ -257,6 +257,66 @@
 				>
 			</File>
 		</Filter>
+		<Filter
+			Name="GRETA"
+			>
+			<File
+				RelativePath=".\GRETA\regexpr2.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\GRETA\regexpr2.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GRETA\reimpl2.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GRETA\restack.h"
+				>
+			</File>
+			<File
+				RelativePath=".\GRETA\syntax2.cpp"
+				>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						UsePrecompiledHeader="0"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\GRETA\syntax2.h"
+				>
+			</File>
+		</Filter>
 	</Files>
 	<Globals>
 	</Globals>
