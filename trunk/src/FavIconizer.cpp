@@ -17,6 +17,30 @@ using namespace regex;
 
 #define MAX_LOADSTRING 100
 
+typedef struct tagICONDIRENTRY
+{
+	BYTE  bWidth;
+	BYTE  bHeight;
+	BYTE  bColorCount;
+	BYTE  bReserved;
+	WORD  wPlanes;
+	WORD  wBitCount;
+	DWORD dwBytesInRes;
+	DWORD dwImageOffset;
+} ICONDIRENTRY;
+
+typedef struct ICONHEADER
+{
+	WORD          idReserved;
+	WORD          idType;
+	WORD          idCount;
+	ICONDIRENTRY  idEntries[1];
+} ICONHEADER;
+
+#define BM 0x4D42
+
+
+
 // Global Variables:
 HINSTANCE hInst;								// current instance
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
@@ -24,6 +48,7 @@ bool g_bThreadRunning = false;
 
 // Forward declarations of functions included in this code module:
 INT_PTR CALLBACK	MainDlg(HWND, UINT, WPARAM, LPARAM);
+bool IsIconOrBmp(BYTE* pBuffer, DWORD dwLen);
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
@@ -80,10 +105,14 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	}
 
 	TCHAR FavIconPath[MAX_PATH];
-	_tcscpy_s(FavIconPath, MAX_PATH, FavPath);
-	_tcscat_s(FavIconPath, MAX_PATH, _T("\\_icons"));
+	if (!SHGetSpecialFolderPath(NULL, FavIconPath, CSIDL_APPDATA, FALSE))
+	{
+		//no favorites folder?
+		MessageBox(hwndDlg, _T("could not locate your favorites folder!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
+		return 1;
+	}
 
-	// maybe check here for success?
+	_tcscat_s(FavIconPath, MAX_PATH, _T("\\FavIconizer"));
 	CreateDirectory(FavIconPath, NULL);
 	SetFileAttributes(FavIconPath, FILE_ATTRIBUTE_HIDDEN);
 
@@ -117,6 +146,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 				FILE *stream;
 				errno_t err;
 
+				iconURL.clear();
 				// Open for read
 				if ((err  = _tfopen_s(&stream, cachefile, _T("r") )) ==0)
 				{
@@ -152,7 +182,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 					off = iconURL.find(':');
 					if (off != string::npos)
 					{
-						off = iconURL.find('/', off+1);
+						off = iconURL.find('/', off+3);
 						if (off != string::npos)
 						{
 							iconURL = iconURL.substr(0, off);
@@ -160,125 +190,80 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 						}
 					}
 				}
+				else
+				{
+					if (_tcsnicmp(iconURL.c_str(), _T("http://"), 7)!=0)
+					{
+						// not an absolute url but a relative one
+						// we need to create an absolute url
+						if (link.GetPath().c_str()[0] == '/')
+						{
+							size_t off = 0;
+							iconURL = link.GetPath();
+							off = iconURL.find(':');
+							if (off != string::npos)
+							{
+								off = iconURL.find('/', off+1);
+								if (off != string::npos)
+								{
+									iconURL = iconURL.substr(0, off) + _T("/") + iconURL;
+								}
+							}
+						}
+						else
+						{
+							size_t slashpos = link.GetPath().find_last_of('/');
+							if (slashpos != wstring::npos)
+							{
+								iconURL = link.GetPath().substr(0, slashpos) + iconURL;
+							}
+						}
+					}
+				}
+			}
+			if (!iconURL.empty())
+			{
+				// now download the icon file
+				TCHAR tempfilebuf[MAX_PATH*4];
+				TCHAR buf[MAX_PATH];
+				GetTempPath(MAX_PATH, buf);
+				GetTempFileName(buf, _T("fav"), 0, tempfilebuf);
+				_tcscat_s(tempfilebuf, MAX_PATH*4, _T(".ico"));
+				if (SUCCEEDED(URLDownloadToFile(NULL, iconURL.c_str(), tempfilebuf, 0, NULL)))
+				{
+					// we have downloaded a file, but is it really an icon or maybe a 404 html page?
+					bool isIcon = false;
+					FILE * iconfile = NULL;
+					if (_tfopen_s(&iconfile, tempfilebuf, _T("r"))==0)
+					{
+						BYTE* pBuffer = new BYTE[1024];
+						size_t numread = fread(pBuffer, sizeof(BYTE), 1024, iconfile);
+						isIcon = IsIconOrBmp(pBuffer, numread);
+						fclose(iconfile);
+						delete pBuffer;
+					}
+					if (isIcon)
+					{
+						// store the icons in the users appdata folder
+						// the name of the icon is the name of the favorite url file but with .ico instead of .url extension
+						FavIconPath;
+						wstring filename = *it;
+						filename = filename.substr(filename.find_last_of('\\'));
+						filename = filename.substr(0, filename.find_last_of('.'));
+						filename = filename + _T(".ico");
+						wstring iconFilePath = FavIconPath;
+						iconFilePath = iconFilePath + _T("\\") + filename;
+						DeleteFile(iconFilePath.c_str());
+						MoveFile(tempfilebuf, iconFilePath.c_str());
+						link.SetIconLocation(iconFilePath.c_str());
+						link.SetIconLocationIndex(0);
+						link.Save(it->c_str());
+					} 
+				}
 			}
 		}
 	}
-/*
-	for (int i=0; i<filelist.GetSize(); i++)
-	{
-		if (link.GetPath().Left(4).CompareNoCase(_T("http"))==0)
-		{
-			CString iconURL;
-			if (iconURL.IsEmpty())
-			{
-				iconURL = _T("favicon.ico");
-				DWORD dwService;
-				CString strServer;
-				CString strObject;
-				INTERNET_PORT nPort;
-				AfxParseURL(link.GetPath(), dwService, strServer, strObject, nPort);
-				iconURL = _T("http://") + strServer + _T("/") + iconURL;
-			} // if (iconURL.IsEmpty())
-			else
-			{
-				if (!iconURL.Left(4).CompareNoCase(_T("http"))==0)
-				{
-					//not a full URL but a relative one
-					if (iconURL.GetAt(0) == '/')
-					{
-						DWORD dwService;
-						CString strServer;
-						CString strObject;
-						INTERNET_PORT nPort;
-						AfxParseURL(link.GetPath(), dwService, strServer, strObject, nPort);
-						iconURL = _T("http://") + strServer + _T("/") + iconURL;
-					} // if (iconURL.GetAt(0) == '/')
-					else
-					{
-						iconURL = link.GetPath().Left(link.GetPath().ReverseFind('/') + 1) + iconURL;
-					}
-				} // if (!iconURL.Left(4).CompareNoCase(_T("http"))==0)				
-			}
-			if (!m_runthread)
-				break;
-			//it's time to fetch the icon
-			try
-			{
-				CInternetSession iconsession;
-				GetDlgItem(IDC_LINKSTATUS)->SetWindowText(_T("getting icon..."));
-				CStdioFile * pIconFile = iconsession.OpenURL(iconURL, 1, INTERNET_FLAG_TRANSFER_BINARY |INTERNET_FLAG_EXISTING_CONNECT);
-				GetTempPath(sizeof(buf)/sizeof(TCHAR), buf);
-				TCHAR tempfilebuf[MAX_PATH];
-				GetTempFileName(buf, _T("fav"), 0, tempfilebuf);
-				_tcscat(tempfilebuf, _T(".ico"));
-				CFile iconfile;
-				iconfile.Open(tempfilebuf, CFile::modeCreate | CFile::modeReadWrite);
-				int len = 0;
-				while (len = pIconFile->Read(buf, sizeof(buf)))
-				{
-					iconfile.Write(buf, len);
-				}
-				iconfile.Close();
-				pIconFile->Close();
-				delete pIconFile;
-				iconsession.Close();
-				//now check if it's really an icon we got
-				BOOL isIcon = FALSE;
-				if(iconfile.Open(tempfilebuf, CFile::modeRead | CFile::typeBinary))
-				{
-					int nSize = (int)iconfile.GetLength();
-					BYTE* pBuffer = new BYTE[nSize];
 
-					if(iconfile.Read(pBuffer, nSize) > 0)
-					{
-						if (IsIconOrBmp(pBuffer, nSize))
-							isIcon = TRUE;
-					}
-
-					iconfile.Close();
-					delete [] pBuffer;
-				}
-				if (isIcon)
-				{
-					GetDlgItem(IDC_LINKSTATUS)->SetWindowText(_T("storing icon..."));
-					CString iconpath = _T("_icons\\") + linkfile.Right(linkfile.GetLength() - linkfile.ReverseFind('\\') - 1);
-					iconpath = iconpath.Left(iconpath.ReverseFind('.')) + _T(".ico");
-					DeleteFile(iconpath);
-					MoveFile(tempfilebuf, iconpath);
-					link.SetIconLocation(iconpath);
-					link.SetIconLocationIndex(0);
-					link.Save(linkfile);
-					nIcons++;
-				} // if (isIcon)
-				else
-				{
-					GetDlgItem(IDC_LINKSTATUS)->SetWindowText(_T("no icon found!"));
-					DeleteFile(tempfilebuf);
-				}
-			}
-			catch (CInternetException* pEx)
-			{
-				pEx->Delete();
-			}
-			catch (CFileException* pEx)
-			{
-				pEx->Delete();
-			}
-		} // if (link.GetPath().Left(4).CompareNoCase(_T("http"))==0) 
-		if (!m_runthread)
-			break;
-		m_totalProgress.StepIt();
-		result.Format(_T("%d of %d links processed. %d icons found"), i+1, filelist.GetSize(), nIcons);
-		GetDlgItem(IDC_RESULT)->SetWindowText(result);
-
-	} // for (int i=0; i<filelist.GetSize(); i++) 
-
-	//Closedown the OLE subsystem
-	::CoUninitialize();
-	GetDlgItem(IDOK)->SetWindowText(_T("OK"));
-	GetDlgItem(IDC_LINKSTATUS)->SetWindowText(_T("finished!"));
-	GetDlgItem(IDC_LINKPATH)->SetWindowText(_T(""));
-*/
 	::CoUninitialize();
 	return 0;
 
@@ -311,3 +296,37 @@ INT_PTR CALLBACK MainDlg(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	return (INT_PTR)FALSE;
 }
+
+
+bool IsIconOrBmp(BYTE* pBuffer, DWORD dwLen)
+{
+	// Quick and dirty check to see if we actually got
+	// an icon or a bitmap
+	ICONHEADER*			pIconHeader = (ICONHEADER*) pBuffer;
+	ICONDIRENTRY*		pIconEntry = (ICONDIRENTRY*) (pBuffer + sizeof(WORD) * 3);
+	BITMAPFILEHEADER*	pBmpHeader = (BITMAPFILEHEADER*) pBuffer;
+
+	if ((pIconHeader->idType == 1)&&
+		(pIconHeader->idReserved == 0)&&
+		(dwLen >= sizeof(ICONHEADER) + sizeof(ICONDIRENTRY)) )
+	{
+		if (pIconEntry->dwImageOffset >= dwLen)
+			goto checkifbmp;
+
+		return true;
+	}
+
+	// Not an icon
+checkifbmp:
+
+	BITMAPFILEHEADER* pBmpFileHeader = (BITMAPFILEHEADER*) pBuffer;
+	BITMAPINFOHEADER* pBmpInfoHeader = (BITMAPINFOHEADER*) (pBuffer + sizeof(BITMAPFILEHEADER));
+
+	if ((dwLen < sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER))||
+		(pBmpFileHeader->bfType != BM)||
+		(pBmpFileHeader->bfSize != dwLen))
+		return false;
+
+	return true;
+}
+
