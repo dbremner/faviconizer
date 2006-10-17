@@ -431,6 +431,8 @@ BOOL CUrlShellLink::Load(const std::wstring& sFilename)
 		//Get the various link values
 		LPTSTR lpTemp = NULL;
 		hRes = m_pURL->GetURL(&lpTemp);
+		if (lpTemp == NULL)
+			return FALSE;
 		if (SUCCEEDED(hRes))
 		{
 			m_sli.m_sTarget = lpTemp;
