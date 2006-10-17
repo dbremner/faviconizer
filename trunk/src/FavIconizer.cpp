@@ -157,6 +157,8 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 			if (!g_bFetchAll)
 				continue;	// only fetch not already fetched icons.
 		}
+		if (progDlg.HasUserCancelled())
+			break;
 		progDlg.SetLine(1, link.GetPath().c_str(), true);
 		if (_tcsncmp(_T("http"), link.GetPath().c_str(), 4)==0)
 		{
@@ -250,6 +252,8 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 				GetTempPath(MAX_PATH, buf);
 				GetTempFileName(buf, _T("fav"), 0, tempfilebuf);
 				_tcscat_s(tempfilebuf, MAX_PATH*4, _T(".ico"));
+				if (progDlg.HasUserCancelled())
+					break;
 				if (SUCCEEDED(URLDownloadToFile(NULL, iconURL.c_str(), tempfilebuf, 0, NULL)))
 				{
 					// we have downloaded a file, but is it really an icon or maybe a 404 html page?
@@ -285,6 +289,8 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 		}
 		count++;
 		progDlg.SetProgress(count, filelist.size());
+		if (progDlg.HasUserCancelled())
+			break;
 	}
 	progDlg.Stop();
 	::CoUninitialize();
