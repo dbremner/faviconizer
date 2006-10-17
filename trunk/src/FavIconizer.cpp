@@ -8,6 +8,11 @@
 #include "shelllink.h"
 #include <vector>
 
+#include "regexpr2.h"
+using namespace std;
+using namespace regex;
+
+
 #pragma comment(lib, "Urlmon")
 
 #define MAX_LOADSTRING 100
@@ -41,7 +46,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 
 
-	DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), NULL, MainDlg);
+	DialogBox(hInst, MAKEINTRESOURCE(IDD_MAINDLG), NULL, MainDlg);
 
 	::CoUninitialize();
 	return 0;
@@ -51,6 +56,8 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 {
 	g_bThreadRunning = true;
 	HWND hwndDlg = (HWND)lParam;
+
+	::CoInitialize(NULL);
 
 	CProgressDlg progDlg;
 	progDlg.SetCancelMsg(_T("Cancelling... please wait"));
@@ -91,10 +98,14 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	}
 	progDlg.SetProgress(0, (DWORD)filelist.size());
 
+	wstring iconURL;
+
+	rpattern pat(_T("<link[ \\t\\r\\n]*rel[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"icon\\\"[ \\t\\r\\n]*href[ \\t\\r\\n]*=[ \\t\\r\\n]*(.*?)[ \\t\\r\\n]*type[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"image/(ico|x-icon)\\\"[ \\t\\r\\n]*>"), _T(""), NOCASE|NORMALIZE|MULTILINE);
+
 	for (std::vector<std::wstring>::iterator it = filelist.begin(); it != filelist.end(); ++it)
 	{
 		CUrlShellLink link;
-		if (!link.Load(*it))
+		if (!link.Load(it->c_str()))
 			continue;
 		progDlg.SetLine(1, link.GetPath().c_str(), true);
 		if (_tcsncmp(_T("http"), link.GetPath().c_str(), 4)==0)
@@ -103,9 +114,53 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 			TCHAR cachefile[MAX_PATH*2];
 			if (SUCCEEDED(URLDownloadToCacheFile(NULL, link.GetPath().c_str(), cachefile, MAX_PATH*4, 0, NULL)))
 			{
+				FILE *stream;
+				errno_t err;
 
+				// Open for read
+				if ((err  = _tfopen_s(&stream, cachefile, _T("r") )) ==0)
+				{
+					//printf( "The file 'crt_fopen_s.c' was not opened\n" );
+					char buffer[60000];
+					size_t len = fread(buffer, sizeof(char), 60000, stream);
+					TCHAR tbuf[60000];
+					MultiByteToWideChar(CP_ACP, 0, buffer, len, tbuf, 60000);
+					wstring reMsg = wstring(tbuf, len);
+					try
+					{
+						match_results results;
+						match_results::backref_type br = pat.match(reMsg, results);
+
+						if (br.matched)
+						{
+							if (results.rlength(1)>0)
+							{
+								iconURL = results.backref(1).str();
+							}
+						}
+						fclose(stream);
+					}
+					catch (...)
+					{
+					}
+				}
+				if (iconURL.empty())
+				{
+					// no icon url found in html tag: use http://www.domain.com/favicon.ico
+					size_t off = 0;
+					iconURL = link.GetPath();
+					off = iconURL.find(':');
+					if (off != string::npos)
+					{
+						off = iconURL.find('/', off+1);
+						if (off != string::npos)
+						{
+							iconURL = iconURL.substr(0, off);
+							iconURL += _T("/favicon.ico");
+						}
+					}
+				}
 			}
-
 		}
 	}
 /*
@@ -114,54 +169,6 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 		if (link.GetPath().Left(4).CompareNoCase(_T("http"))==0)
 		{
 			CString iconURL;
-			try
-			{
-				GetDlgItem(IDC_LINKSTATUS)->SetWindowText(_T("connecting..."));
-				CInternetSession session;
-				CStdioFile * pHtmlFile = session.OpenURL(link.GetPath(),1, INTERNET_FLAG_TRANSFER_BINARY |INTERNET_FLAG_EXISTING_CONNECT|INTERNET_FLAG_NO_COOKIES);
-				if (pHtmlFile == NULL)
-					continue;
-				//now read the html file and search for <LINK REL="SHORTCUT ICON"
-				CString htmlline;
-				CString htmlheader;
-				GetDlgItem(IDC_LINKSTATUS)->SetWindowText(_T("receiving page..."));
-				while (pHtmlFile->ReadString(htmlline))
-				{
-					htmlheader += htmlline;
-					//we assume here that the html tag for the favicon is not
-					//split over several lines or has several whitespaces in it
-					//this won't work in all cases but a real parser just for
-					//the favicons is like killing flies with a rocket...
-					CString temp = htmlheader;
-					temp.MakeUpper();
-					if (temp.Find(_T("</HEAD>"))>=0)
-					{
-						//end of header found
-						int pos = temp.Find(_T("<LINK REL=\"SHORTCUT ICON\""));
-						if (pos < 0)
-							pos = temp.Find(_T("<LINK REL=\"ICON\""));
-						if (pos >= 0)
-						{
-							//int startpos = temp.Find(_T("HREF=\""), pos)+6;
-							//int endpos = temp.Find(_T("\""), startpos);
-							//iconURL = htmlheader.Mid(startpos, endpos);
-
-							//iconURL = temp.Mid(pos);
-							iconURL = htmlheader.Mid(temp.Find(_T("HREF=\""), pos)+6);
-							iconURL = iconURL.Left(iconURL.Find(_T("\"")));
-							GetDlgItem(IDC_LINKSTATUS)->SetWindowText(_T("icon tag found!"));
-						} // if (pos >= 0)
-						break;
-					} // if (htmlheader.Find(_T("</HEAD>"))>=0)
-				} // while (pHtmlFile->ReadString(htmlline))
-				pHtmlFile->Close();
-				delete pHtmlFile;
-				session.Close();
-			}
-			catch (CInternetException* pEx)
-			{
-				pEx->Delete();
-			}
 			if (iconURL.IsEmpty())
 			{
 				iconURL = _T("favicon.ico");
@@ -272,6 +279,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	GetDlgItem(IDC_LINKSTATUS)->SetWindowText(_T("finished!"));
 	GetDlgItem(IDC_LINKPATH)->SetWindowText(_T(""));
 */
+	::CoUninitialize();
 	return 0;
 
 }
