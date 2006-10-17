@@ -131,6 +131,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 
 	rpattern pat(_T("<link[ \\t\\r\\n]*rel[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"icon\\\"[ \\t\\r\\n]*href[ \\t\\r\\n]*=[ \\t\\r\\n]*(.*?)[ \\t\\r\\n]*type[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"image/(ico|x-icon)\\\"[ \\t\\r\\n]*>"), _T(""), NOCASE|NORMALIZE|MULTILINE);
 
+	int count = 0;
 	for (std::vector<std::wstring>::iterator it = filelist.begin(); it != filelist.end(); ++it)
 	{
 		CUrlShellLink link;
@@ -262,6 +263,8 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 				}
 			}
 		}
+		count++;
+		progDlg.SetProgress(count, filelist.size());
 	}
 
 	::CoUninitialize();
