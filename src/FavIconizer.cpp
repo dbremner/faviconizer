@@ -299,8 +299,24 @@ INT_PTR CALLBACK MainDlg(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 	switch (message)
 	{
 	case WM_INITDIALOG:
-		return (INT_PTR)TRUE;
+		{
+			HWND hwndOwner; 
+			RECT rc, rcDlg, rcOwner; 
 
+			hwndOwner = GetDesktopWindow(); 
+
+			GetWindowRect(hwndOwner, &rcOwner); 
+			GetWindowRect(hDlg, &rcDlg); 
+			CopyRect(&rc, &rcOwner); 
+
+			OffsetRect(&rcDlg, -rcDlg.left, -rcDlg.top); 
+			OffsetRect(&rc, -rc.left, -rc.top); 
+			OffsetRect(&rc, -rcDlg.right, -rcDlg.bottom); 
+
+			SetWindowPos(hDlg, HWND_TOP, rcOwner.left + (rc.right / 2), rcOwner.top + (rc.bottom / 2), 0, 0,	SWP_NOSIZE); 
+
+		}
+		return (INT_PTR)TRUE;
 	case WM_COMMAND:
 		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
 		{
