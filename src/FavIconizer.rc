@@ -63,23 +63,6 @@ BEGIN
 END
 
 
-/////////////////////////////////////////////////////////////////////////////
-//
-// Dialog
-//
-
-IDD_ABOUTBOX DIALOG  22, 17, 230, 75
-STYLE DS_SETFONT | DS_MODALFRAME | WS_CAPTION | WS_SYSMENU
-CAPTION "About"
-FONT 8, "System"
-BEGIN
-    ICON            IDI_FAVICONIZER,IDC_MYICON,14,9,16,16
-    LTEXT           "FavIconizer Version 1.0",IDC_STATIC,49,10,119,8,SS_NOPREFIX
-    LTEXT           "Copyright (C) 2006",IDC_STATIC,49,20,119,8
-    DEFPUSHBUTTON   "OK",IDOK,195,6,30,11,WS_GROUP
-END
-
-
 #ifdef APSTUDIO_INVOKED
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -142,10 +125,10 @@ STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSM
 CAPTION "FavIconizer"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    DEFPUSHBUTTON   "Exit",IDOK,86,95,50,14
-    LTEXT           "There are xxxx favorite links with xxx of them having favicons.",IDC_STATIC,7,7,129,25
-    PUSHBUTTON      "Find missing FavIcons",IDC_FINDMISSING,22,39,99,14
-    PUSHBUTTON      "Rescan all links",IDC_FINDALL,22,63,99,14
+    PUSHBUTTON      "&Exit",IDOK,86,95,50,14
+    LTEXT           "You can either find only favicons for links which don't already have them, or get the favicons of all the links in your favorites folder.",IDC_STATIC,7,7,129,37
+    DEFPUSHBUTTON   "Find &missing FavIcons",IDC_FINDMISSING,22,50,99,14
+    PUSHBUTTON      "Rescan &all links",IDC_FINDALL,22,74,99,14
 END
 
 
