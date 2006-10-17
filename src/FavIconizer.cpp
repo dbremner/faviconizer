@@ -45,6 +45,7 @@ typedef struct ICONHEADER
 HINSTANCE hInst;								// current instance
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
 bool g_bThreadRunning = false;
+bool g_bFetchAll = false;
 
 // Forward declarations of functions included in this code module:
 INT_PTR CALLBACK	MainDlg(HWND, UINT, WPARAM, LPARAM);
@@ -108,7 +109,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	if (!SHGetSpecialFolderPath(NULL, FavIconPath, CSIDL_APPDATA, FALSE))
 	{
 		//no favorites folder?
-		MessageBox(hwndDlg, _T("could not locate your favorites folder!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
+		MessageBox(hwndDlg, _T("could not locate the %APPDATA% folder!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
 		return 1;
 	}
 
@@ -122,13 +123,20 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	bool bIsDir = false;
 	while (fileenumerator.NextFile(currentPath, &bIsDir))
 	{
-		if (!bIsDir)
-			filelist.push_back(std::wstring(currentPath));
+		if (!bIsDir)	// exclude directories
+		{
+			// also exclude non-url files
+			size_t len = _tcslen(currentPath);
+			if (_tcsicmp(&currentPath[len-4], _T(".url"))==0)
+				filelist.push_back(std::wstring(currentPath));
+		}
 	}
 	progDlg.SetProgress(0, (DWORD)filelist.size());
 
 	wstring iconURL;
 
+	// regex pattern to match <link rel="icon" href="some/url" type=image/ico>
+	// or <link rel="icon" href="some/url" type=image/x-icon>
 	rpattern pat(_T("<link[ \\t\\r\\n]*rel[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"icon\\\"[ \\t\\r\\n]*href[ \\t\\r\\n]*=[ \\t\\r\\n]*(.*?)[ \\t\\r\\n]*type[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"image/(ico|x-icon)\\\"[ \\t\\r\\n]*>"), _T(""), NOCASE|NORMALIZE|MULTILINE);
 
 	int count = 0;
@@ -137,6 +145,12 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 		CUrlShellLink link;
 		if (!link.Load(it->c_str()))
 			continue;
+		if (!link.GetIconLocation().substr(0, 4).compare(_T("http"))==0)
+		{
+			// link already has a non-url icon path
+			if (!g_bFetchAll)
+				continue;	// only fetch not already fetched icons.
+		}
 		progDlg.SetLine(1, link.GetPath().c_str(), true);
 		if (_tcsncmp(_T("http"), link.GetPath().c_str(), 4)==0)
 		{
@@ -266,7 +280,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 		count++;
 		progDlg.SetProgress(count, filelist.size());
 	}
-
+	progDlg.Stop();
 	::CoUninitialize();
 	return 0;
 
@@ -289,10 +303,12 @@ INT_PTR CALLBACK MainDlg(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		if (LOWORD(wParam) == IDC_FINDMISSING)
 		{
+			g_bFetchAll = false;
 			CreateThread(NULL, NULL, ScanThread, hDlg, 0, NULL);
 		}
 		if (LOWORD(wParam) == IDC_FINDALL)
 		{
+			g_bFetchAll = true;
 			CreateThread(NULL, NULL, ScanThread, hDlg, 0, NULL);
 		}
 		break;
@@ -307,7 +323,6 @@ bool IsIconOrBmp(BYTE* pBuffer, DWORD dwLen)
 	// an icon or a bitmap
 	ICONHEADER*			pIconHeader = (ICONHEADER*) pBuffer;
 	ICONDIRENTRY*		pIconEntry = (ICONDIRENTRY*) (pBuffer + sizeof(WORD) * 3);
-	BITMAPFILEHEADER*	pBmpHeader = (BITMAPFILEHEADER*) pBuffer;
 
 	if ((pIconHeader->idType == 1)&&
 		(pIconHeader->idReserved == 0)&&
@@ -323,7 +338,6 @@ bool IsIconOrBmp(BYTE* pBuffer, DWORD dwLen)
 checkifbmp:
 
 	BITMAPFILEHEADER* pBmpFileHeader = (BITMAPFILEHEADER*) pBuffer;
-	BITMAPINFOHEADER* pBmpInfoHeader = (BITMAPINFOHEADER*) (pBuffer + sizeof(BITMAPFILEHEADER));
 
 	if ((dwLen < sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER))||
 		(pBmpFileHeader->bfType != BM)||
