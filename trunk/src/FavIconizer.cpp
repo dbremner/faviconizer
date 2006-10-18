@@ -56,6 +56,7 @@ bool g_bFetchAll = false;
 // Forward declarations of functions included in this code module:
 INT_PTR CALLBACK	MainDlg(HWND, UINT, WPARAM, LPARAM);
 bool IsIconOrBmp(BYTE* pBuffer, DWORD dwLen);
+DWORD EndThreadWithError(HWND hwndDlg);
 
 int APIENTRY _tWinMain(HINSTANCE hInstance,
                      HINSTANCE hPrevInstance,
@@ -90,10 +91,12 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	InterlockedExchange(&g_bThreadRunning, TRUE);
 	HWND hwndDlg = (HWND)lParam;
 
+	EnableWindow(GetDlgItem(hwndDlg, IDC_FINDMISSING), TRUE);
+	EnableWindow(GetDlgItem(hwndDlg, IDC_FINDALL), TRUE);
+
 	if (::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED)!=S_OK)
 	{
-		InterlockedExchange(&g_bThreadRunning, FALSE);
-		return 1;
+		return EndThreadWithError(hwndDlg);
 	}
 
 	//first get the favorites folder of the current user
@@ -102,15 +105,13 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	{
 		//no favorites folder?
 		MessageBox(hwndDlg, _T("could not locate your favorites folder!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
-		InterlockedExchange(&g_bThreadRunning, FALSE);
-		return 1;
+		return EndThreadWithError(hwndDlg);
 	}
 
 	if (!SetCurrentDirectory(FavPath))
 	{
 		MessageBox(hwndDlg, _T("could not set the current directory!"), _T("Error"), MB_OK | MB_ICONEXCLAMATION);
-		InterlockedExchange(&g_bThreadRunning, FALSE);
-		return 1;
+		return EndThreadWithError(hwndDlg);
 	}
 
 	TCHAR FavIconPath[MAX_PATH];
@@ -118,14 +119,12 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	{
 		//no favorites folder?
 		MessageBox(hwndDlg, _T("could not locate the %APPDATA% folder!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
-		InterlockedExchange(&g_bThreadRunning, FALSE);
-		return 1;
+		return EndThreadWithError(hwndDlg);
 	}
 
 	if (_tcscat_s(FavIconPath, MAX_PATH, _T("\\FavIconizer")))
 	{
-		InterlockedExchange(&g_bThreadRunning, FALSE);
-		return 1;
+		return EndThreadWithError(hwndDlg);
 	}
 	CreateDirectory(FavIconPath, NULL);
 
@@ -162,14 +161,12 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	if (nTotalLinks == 0)
 	{
 		MessageBox(hwndDlg, _T("No favorite links found to check!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
-		InterlockedExchange(&g_bThreadRunning, FALSE);
-		return 1;
+		return EndThreadWithError(hwndDlg);
 	}
 	if ((filelist.size() == 0)&&(!g_bFetchAll))
 	{
 		MessageBox(hwndDlg, _T("All favorite links already have a favicon!"), szTitle, MB_OK | MB_ICONINFORMATION);
-		InterlockedExchange(&g_bThreadRunning, FALSE);
-		return 1;
+		return EndThreadWithError(hwndDlg);
 	}
 
 	TCHAR sText[4096];
@@ -350,9 +347,25 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	SetWindowText(GetDlgItem(hwndDlg, IDOK), _T("&Exit"));
 	ShowWindow(GetDlgItem(hwndDlg, IDC_PROGRESS), SW_HIDE);
 
+	EnableWindow(GetDlgItem(hwndDlg, IDC_FINDMISSING), TRUE);
+	EnableWindow(GetDlgItem(hwndDlg, IDC_FINDALL), TRUE);
 	::CoUninitialize();
 	InterlockedExchange(&g_bThreadRunning, FALSE);
 	return 0;
+}
+
+DWORD EndThreadWithError(HWND hwndDlg)
+{
+	SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE1), _T(""));
+	SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE2), _T(""));
+	SetWindowText(GetDlgItem(hwndDlg, IDOK), _T("&Exit"));
+	ShowWindow(GetDlgItem(hwndDlg, IDC_PROGRESS), SW_HIDE);
+
+	EnableWindow(GetDlgItem(hwndDlg, IDC_FINDMISSING), TRUE);
+	EnableWindow(GetDlgItem(hwndDlg, IDC_FINDALL), TRUE);
+	::CoUninitialize();
+	InterlockedExchange(&g_bThreadRunning, FALSE);
+	return 1;
 }
 
 // Message handler for about box.
@@ -393,21 +406,29 @@ INT_PTR CALLBACK MainDlg(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			else
 			{
 				InterlockedExchange(&g_bUserCancelled, TRUE);
+				SetWindowText(GetDlgItem(hDlg, IDC_PROGLINE1), _T("Cancelling, please wait..."));
+				SetWindowText(GetDlgItem(hDlg, IDC_PROGLINE2), _T(""));
 			}
 		}
 		if (LOWORD(wParam) == IDC_FINDMISSING)
 		{
-			g_bFetchAll = false;
-			InterlockedExchange(&g_bThreadRunning, TRUE);
-			InterlockedExchange(&g_bUserCancelled, FALSE);
-			CreateThread(NULL, NULL, ScanThread, hDlg, 0, NULL);
+			if (!g_bThreadRunning)
+			{
+				g_bFetchAll = false;
+				InterlockedExchange(&g_bThreadRunning, TRUE);
+				InterlockedExchange(&g_bUserCancelled, FALSE);
+				CreateThread(NULL, NULL, ScanThread, hDlg, 0, NULL);
+			}
 		}
 		if (LOWORD(wParam) == IDC_FINDALL)
 		{
-			g_bFetchAll = true;
-			InterlockedExchange(&g_bThreadRunning, TRUE);
-			InterlockedExchange(&g_bUserCancelled, FALSE);
-			CreateThread(NULL, NULL, ScanThread, hDlg, 0, NULL);
+			if (!g_bThreadRunning)
+			{
+				g_bFetchAll = true;
+				InterlockedExchange(&g_bThreadRunning, TRUE);
+				InterlockedExchange(&g_bUserCancelled, FALSE);
+				CreateThread(NULL, NULL, ScanThread, hDlg, 0, NULL);
+			}
 		}
 		break;
 	}
