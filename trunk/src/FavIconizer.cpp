@@ -95,6 +95,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	CProgressDlg progDlg;
 	progDlg.SetCancelMsg(_T("Cancelling... please wait"));
 	progDlg.SetTitle(_T("Retrieving FavIcons from Websites"));
+	progDlg.SetTime(true);
 	progDlg.ShowModal(hwndDlg);
 
 	//first get the favorites folder of the current user
@@ -102,12 +103,14 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	if (!SHGetSpecialFolderPath(NULL, FavPath, CSIDL_FAVORITES, FALSE))
 	{
 		//no favorites folder?
+		progDlg.Stop();
 		MessageBox(hwndDlg, _T("could not locate your favorites folder!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
 		return 1;
 	}
 
 	if (!SetCurrentDirectory(FavPath))
 	{
+		progDlg.Stop();
 		MessageBox(hwndDlg, _T("could not set the current directory!"), _T("Error"), MB_OK | MB_ICONEXCLAMATION);
 		return 1;
 	}
@@ -116,18 +119,23 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	if (!SHGetSpecialFolderPath(NULL, FavIconPath, CSIDL_APPDATA, FALSE))
 	{
 		//no favorites folder?
+		progDlg.Stop();
 		MessageBox(hwndDlg, _T("could not locate the %APPDATA% folder!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
 		return 1;
 	}
 
 	if (_tcscat_s(FavIconPath, MAX_PATH, _T("\\FavIconizer")))
+	{
+		progDlg.Stop();
 		return 1;
+	}
 	CreateDirectory(FavIconPath, NULL);
 
 	std::vector<std::wstring> filelist;
 	CDirFileEnum fileenumerator(FavPath);
 	TCHAR currentPath[MAX_PATH];
 	bool bIsDir = false;
+	int nTotalLinks = 0;
 	while (fileenumerator.NextFile(currentPath, &bIsDir))
 	{
 		if (!bIsDir)	// exclude directories
@@ -135,12 +143,49 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 			// also exclude non-url files
 			size_t len = _tcslen(currentPath);
 			if (_tcsicmp(&currentPath[len-4], _T(".url"))==0)
+			{
+				nTotalLinks++;
+				CUrlShellLink link;
+				if (!link.Load(currentPath))
+					continue;
+				if ((!link.GetIconLocation().empty())&&(!link.GetIconLocation().substr(0, 4).compare(_T("http"))==0))
+				{
+					// link already has a non-url icon path
+					if (!g_bFetchAll)
+						continue;	// only fetch not already fetched icons.
+				}
 				filelist.push_back(std::wstring(currentPath));
+			}
 		}
 	}
+
+	if (nTotalLinks == 0)
+	{
+		progDlg.Stop();
+		MessageBox(hwndDlg, _T("No favorite links found to check!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
+		return 1;
+	}
+	if ((filelist.size() == 0)&&(!g_bFetchAll))
+	{
+		progDlg.Stop();
+		MessageBox(hwndDlg, _T("All favorite links already have a favicon!"), szTitle, MB_OK | MB_ICONINFORMATION);
+		return 1;
+	}
+
+	TCHAR sText[4096];
+	if (nTotalLinks == (int)filelist.size())
+		_stprintf_s(sText, 4096, _T("Checking link %ld of %ld..."), 0, nTotalLinks);
+	else
+		_stprintf_s(sText, 4096, _T("Checking link %ld of %ld, skipping %ld links..."), 0, filelist.size(), nTotalLinks-filelist.size());
+	progDlg.SetLine(1, sText);
+	SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE1), sText);
 	// start with no progress
 	progDlg.SetProgress(0, (DWORD)filelist.size());
+	ShowWindow(GetDlgItem(hwndDlg, IDC_PROGRESS), SW_SHOW);
+	SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS), PBM_SETRANGE32, 0, filelist.size());
+	SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS), PBM_SETSTEP, 1, 0);
 
+	progDlg.ResetTimer();
 	wstring iconURL;
 
 	// regex pattern to match <link rel="icon" href="some/url" type=image/ico>
@@ -153,15 +198,17 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 		CUrlShellLink link;
 		if (!link.Load(it->c_str()))
 			continue;
-		if (!link.GetIconLocation().substr(0, 4).compare(_T("http"))==0)
-		{
-			// link already has a non-url icon path
-			if (!g_bFetchAll)
-				continue;	// only fetch not already fetched icons.
-		}
 		if (progDlg.HasUserCancelled())
 			break;
-		progDlg.SetLine(1, link.GetPath().c_str(), true);
+		if (nTotalLinks == (int)filelist.size())
+			_stprintf_s(sText, 4096, _T("Checking link %ld of %ld..."), count+1, nTotalLinks);
+		else
+			_stprintf_s(sText, 4096, _T("Checking link %ld of %ld, skipping %ld links..."), count+1, filelist.size(), nTotalLinks-filelist.size());
+		progDlg.SetLine(1, sText);
+		SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE1), sText);
+		progDlg.SetLine(2, link.GetPath().c_str(), true);
+		SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE2), link.GetPath().c_str());
+		SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS), PBM_STEPIT, 0, 0);
 		if (_tcsncmp(_T("http"), link.GetPath().c_str(), 4)==0)
 		{
 			//yes, it's an url to http
@@ -305,6 +352,10 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 			break;
 	}
 	progDlg.Stop();
+	SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE1), _T(""));
+	SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE2), _T(""));
+	ShowWindow(GetDlgItem(hwndDlg, IDC_PROGRESS), SW_HIDE);
+
 	::CoUninitialize();
 	return 0;
 
