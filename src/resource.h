@@ -7,7 +7,6 @@
 #define IDM_ABOUT                       104
 #define IDM_EXIT                        105
 #define IDI_FAVICONIZER                 107
-#define IDI_SMALL                       108
 #define IDC_FAVICONIZER                 109
 #define IDR_MAINFRAME                   128
 #define IDD_MAINDLG                     129

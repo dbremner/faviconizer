@@ -3,7 +3,6 @@
 
 #include "stdafx.h"
 #include "FavIconizer.h"
-#include "ProgressDlg.h"
 #include "DirFileEnum.h"
 #include "shelllink.h"
 #include <vector>
@@ -50,7 +49,8 @@ typedef struct ICONHEADER
 // Global Variables:
 HINSTANCE hInst;								// current instance
 TCHAR szTitle[MAX_LOADSTRING];					// The title bar text
-bool g_bThreadRunning = false;
+volatile LONG g_bThreadRunning = FALSE;
+volatile LONG g_bUserCancelled = FALSE;
 bool g_bFetchAll = false;
 
 // Forward declarations of functions included in this code module:
@@ -66,6 +66,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	UNREFERENCED_PARAMETER(lpCmdLine);
 	UNREFERENCED_PARAMETER(nCmdShow);
 
+	hInst = hInstance;
 	// Initialize global strings
 	LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
 
@@ -86,32 +87,29 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 DWORD WINAPI ScanThread(LPVOID lParam)
 {
-	g_bThreadRunning = true;
+	InterlockedExchange(&g_bThreadRunning, TRUE);
 	HWND hwndDlg = (HWND)lParam;
 
 	if (::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED)!=S_OK)
+	{
+		InterlockedExchange(&g_bThreadRunning, FALSE);
 		return 1;
-
-	CProgressDlg progDlg;
-	progDlg.SetCancelMsg(_T("Cancelling... please wait"));
-	progDlg.SetTitle(_T("Retrieving FavIcons from Websites"));
-	progDlg.SetTime(true);
-	progDlg.ShowModal(hwndDlg);
+	}
 
 	//first get the favorites folder of the current user
 	TCHAR FavPath[MAX_PATH];
 	if (!SHGetSpecialFolderPath(NULL, FavPath, CSIDL_FAVORITES, FALSE))
 	{
 		//no favorites folder?
-		progDlg.Stop();
 		MessageBox(hwndDlg, _T("could not locate your favorites folder!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
+		InterlockedExchange(&g_bThreadRunning, FALSE);
 		return 1;
 	}
 
 	if (!SetCurrentDirectory(FavPath))
 	{
-		progDlg.Stop();
 		MessageBox(hwndDlg, _T("could not set the current directory!"), _T("Error"), MB_OK | MB_ICONEXCLAMATION);
+		InterlockedExchange(&g_bThreadRunning, FALSE);
 		return 1;
 	}
 
@@ -119,17 +117,19 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	if (!SHGetSpecialFolderPath(NULL, FavIconPath, CSIDL_APPDATA, FALSE))
 	{
 		//no favorites folder?
-		progDlg.Stop();
 		MessageBox(hwndDlg, _T("could not locate the %APPDATA% folder!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
+		InterlockedExchange(&g_bThreadRunning, FALSE);
 		return 1;
 	}
 
 	if (_tcscat_s(FavIconPath, MAX_PATH, _T("\\FavIconizer")))
 	{
-		progDlg.Stop();
+		InterlockedExchange(&g_bThreadRunning, FALSE);
 		return 1;
 	}
 	CreateDirectory(FavIconPath, NULL);
+
+	SetWindowText(GetDlgItem(hwndDlg, IDOK), _T("&Cancel"));
 
 	std::vector<std::wstring> filelist;
 	CDirFileEnum fileenumerator(FavPath);
@@ -161,14 +161,14 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 
 	if (nTotalLinks == 0)
 	{
-		progDlg.Stop();
 		MessageBox(hwndDlg, _T("No favorite links found to check!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
+		InterlockedExchange(&g_bThreadRunning, FALSE);
 		return 1;
 	}
 	if ((filelist.size() == 0)&&(!g_bFetchAll))
 	{
-		progDlg.Stop();
 		MessageBox(hwndDlg, _T("All favorite links already have a favicon!"), szTitle, MB_OK | MB_ICONINFORMATION);
+		InterlockedExchange(&g_bThreadRunning, FALSE);
 		return 1;
 	}
 
@@ -177,15 +177,12 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 		_stprintf_s(sText, 4096, _T("Checking link %ld of %ld..."), 0, nTotalLinks);
 	else
 		_stprintf_s(sText, 4096, _T("Checking link %ld of %ld, skipping %ld links..."), 0, filelist.size(), nTotalLinks-filelist.size());
-	progDlg.SetLine(1, sText);
 	SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE1), sText);
 	// start with no progress
-	progDlg.SetProgress(0, (DWORD)filelist.size());
 	ShowWindow(GetDlgItem(hwndDlg, IDC_PROGRESS), SW_SHOW);
 	SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS), PBM_SETRANGE32, 0, filelist.size());
 	SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS), PBM_SETSTEP, 1, 0);
 
-	progDlg.ResetTimer();
 	wstring iconURL;
 
 	// regex pattern to match <link rel="icon" href="some/url" type=image/ico>
@@ -198,15 +195,13 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 		CUrlShellLink link;
 		if (!link.Load(it->c_str()))
 			continue;
-		if (progDlg.HasUserCancelled())
+		if (g_bUserCancelled)
 			break;
 		if (nTotalLinks == (int)filelist.size())
 			_stprintf_s(sText, 4096, _T("Checking link %ld of %ld..."), count+1, nTotalLinks);
 		else
 			_stprintf_s(sText, 4096, _T("Checking link %ld of %ld, skipping %ld links..."), count+1, filelist.size(), nTotalLinks-filelist.size());
-		progDlg.SetLine(1, sText);
 		SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE1), sText);
-		progDlg.SetLine(2, link.GetPath().c_str(), true);
 		SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE2), link.GetPath().c_str());
 		SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS), PBM_STEPIT, 0, 0);
 		if (_tcsncmp(_T("http"), link.GetPath().c_str(), 4)==0)
@@ -308,7 +303,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 					if (GetTempFileName(buf, _T("fav"), 0, tempfilebuf))
 					{
 						_tcscat_s(tempfilebuf, MAX_PATH*4, _T(".ico"));
-						if (progDlg.HasUserCancelled())
+						if (g_bUserCancelled)
 							break;
 						if (SUCCEEDED(URLDownloadToFile(NULL, iconURL.c_str(), tempfilebuf, 0, NULL)))
 						{
@@ -347,18 +342,17 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 			}
 		}
 		count++;
-		progDlg.SetProgress(count, filelist.size());
-		if (progDlg.HasUserCancelled())
+		if (g_bUserCancelled)
 			break;
 	}
-	progDlg.Stop();
 	SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE1), _T(""));
 	SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE2), _T(""));
+	SetWindowText(GetDlgItem(hwndDlg, IDOK), _T("&Exit"));
 	ShowWindow(GetDlgItem(hwndDlg, IDC_PROGRESS), SW_HIDE);
 
 	::CoUninitialize();
+	InterlockedExchange(&g_bThreadRunning, FALSE);
 	return 0;
-
 }
 
 // Message handler for about box.
@@ -383,23 +377,36 @@ INT_PTR CALLBACK MainDlg(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			OffsetRect(&rc, -rcDlg.right, -rcDlg.bottom); 
 
 			SetWindowPos(hDlg, HWND_TOP, rcOwner.left + (rc.right / 2), rcOwner.top + (rc.bottom / 2), 0, 0,	SWP_NOSIZE); 
-
+			HICON hIcon = (HICON)::LoadImage(hInst, MAKEINTRESOURCE(IDI_FAVICONIZER), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE|LR_SHARED);
+			::SendMessage(hDlg, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+			::SendMessage(hDlg, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
 		}
 		return (INT_PTR)TRUE;
 	case WM_COMMAND:
 		if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
 		{
-			EndDialog(hDlg, LOWORD(wParam));
-			return (INT_PTR)TRUE;
+			if (!g_bThreadRunning)
+			{
+				EndDialog(hDlg, LOWORD(wParam));
+				return (INT_PTR)TRUE;
+			}
+			else
+			{
+				InterlockedExchange(&g_bUserCancelled, TRUE);
+			}
 		}
 		if (LOWORD(wParam) == IDC_FINDMISSING)
 		{
 			g_bFetchAll = false;
+			InterlockedExchange(&g_bThreadRunning, TRUE);
+			InterlockedExchange(&g_bUserCancelled, FALSE);
 			CreateThread(NULL, NULL, ScanThread, hDlg, 0, NULL);
 		}
 		if (LOWORD(wParam) == IDC_FINDALL)
 		{
 			g_bFetchAll = true;
+			InterlockedExchange(&g_bThreadRunning, TRUE);
+			InterlockedExchange(&g_bUserCancelled, FALSE);
 			CreateThread(NULL, NULL, ScanThread, hDlg, 0, NULL);
 		}
 		break;

@@ -183,10 +183,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\ProgressDlg.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\shelllink.cpp"
 				>
 			</File>
@@ -222,10 +218,6 @@
 			</File>
 			<File
 				RelativePath=".\FavIconizer.h"
-				>
-			</File>
-			<File
-				RelativePath=".\ProgressDlg.h"
 				>
 			</File>
 			<File
