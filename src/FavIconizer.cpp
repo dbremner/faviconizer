@@ -89,7 +89,8 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 	g_bThreadRunning = true;
 	HWND hwndDlg = (HWND)lParam;
 
-	::CoInitialize(NULL);
+	if (::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED)!=S_OK)
+		return 1;
 
 	CProgressDlg progDlg;
 	progDlg.SetCancelMsg(_T("Cancelling... please wait"));
@@ -119,9 +120,9 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 		return 1;
 	}
 
-	_tcscat_s(FavIconPath, MAX_PATH, _T("\\FavIconizer"));
+	if (_tcscat_s(FavIconPath, MAX_PATH, _T("\\FavIconizer")))
+		return 1;
 	CreateDirectory(FavIconPath, NULL);
-	SetFileAttributes(FavIconPath, FILE_ATTRIBUTE_HIDDEN);
 
 	std::vector<std::wstring> filelist;
 	CDirFileEnum fileenumerator(FavPath);
@@ -137,6 +138,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 				filelist.push_back(std::wstring(currentPath));
 		}
 	}
+	// start with no progress
 	progDlg.SetProgress(0, (DWORD)filelist.size());
 
 	wstring iconURL;
@@ -171,30 +173,35 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 
 				iconURL.clear();
 				// Open for read
-				if ((err  = _tfopen_s(&stream, cachefile, _T("r") )) ==0)
+				if ((err  = _tfopen_s(&stream, cachefile, _T("r") )) == 0)
 				{
-					//printf( "The file 'crt_fopen_s.c' was not opened\n" );
+					// 60'000 bytes should be enough to find the <link...> tag
 					char buffer[60000];
 					size_t len = fread(buffer, sizeof(char), 60000, stream);
-					TCHAR tbuf[60000];
-					MultiByteToWideChar(CP_ACP, 0, buffer, len, tbuf, 60000);
-					wstring reMsg = wstring(tbuf, len);
-					try
+					if (len > 0)
 					{
-						match_results results;
-						match_results::backref_type br = pat.match(reMsg, results);
-
-						if (br.matched)
+						TCHAR tbuf[60000];
+						if (MultiByteToWideChar(CP_ACP, 0, buffer, len, tbuf, 60000))
 						{
-							if (results.rlength(1)>0)
+							wstring reMsg = wstring(tbuf, len);
+							try
 							{
-								iconURL = results.backref(1).str();
+								match_results results;
+								match_results::backref_type br = pat.match(reMsg, results);
+
+								if (br.matched)
+								{
+									if (results.rlength(1)>0)
+									{
+										iconURL = results.backref(1).str();
+									}
+								}
 							}
+							catch (...)
+							{
+							}
+							fclose(stream);
 						}
-						fclose(stream);
-					}
-					catch (...)
-					{
 					}
 				}
 				if (iconURL.empty())
@@ -249,41 +256,46 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 				// now download the icon file
 				TCHAR tempfilebuf[MAX_PATH*4];
 				TCHAR buf[MAX_PATH];
-				GetTempPath(MAX_PATH, buf);
-				GetTempFileName(buf, _T("fav"), 0, tempfilebuf);
-				_tcscat_s(tempfilebuf, MAX_PATH*4, _T(".ico"));
-				if (progDlg.HasUserCancelled())
-					break;
-				if (SUCCEEDED(URLDownloadToFile(NULL, iconURL.c_str(), tempfilebuf, 0, NULL)))
+				if (GetTempPath(MAX_PATH, buf))
 				{
-					// we have downloaded a file, but is it really an icon or maybe a 404 html page?
-					bool isIcon = false;
-					FILE * iconfile = NULL;
-					if (_tfopen_s(&iconfile, tempfilebuf, _T("r"))==0)
+					if (GetTempFileName(buf, _T("fav"), 0, tempfilebuf))
 					{
-						BYTE* pBuffer = new BYTE[1024];
-						size_t numread = fread(pBuffer, sizeof(BYTE), 1024, iconfile);
-						isIcon = IsIconOrBmp(pBuffer, numread);
-						fclose(iconfile);
-						delete pBuffer;
+						_tcscat_s(tempfilebuf, MAX_PATH*4, _T(".ico"));
+						if (progDlg.HasUserCancelled())
+							break;
+						if (SUCCEEDED(URLDownloadToFile(NULL, iconURL.c_str(), tempfilebuf, 0, NULL)))
+						{
+							// we have downloaded a file, but is it really an icon or maybe a 404 html page?
+							bool isIcon = false;
+							FILE * iconfile = NULL;
+							if (_tfopen_s(&iconfile, tempfilebuf, _T("r"))==0)
+							{
+								BYTE* pBuffer = new BYTE[1024];
+								size_t numread = fread(pBuffer, sizeof(BYTE), 1024, iconfile);
+								if (numread > 0)
+									isIcon = IsIconOrBmp(pBuffer, numread);
+								fclose(iconfile);
+								delete pBuffer;
+							}
+							if (isIcon)
+							{
+								// store the icons in the users appdata folder
+								// the name of the icon is the name of the favorite url file but with .ico instead of .url extension
+								FavIconPath;
+								wstring filename = *it;
+								filename = filename.substr(filename.find_last_of('\\'));
+								filename = filename.substr(0, filename.find_last_of('.'));
+								filename = filename + _T(".ico");
+								wstring iconFilePath = FavIconPath;
+								iconFilePath = iconFilePath + _T("\\") + filename;
+								DeleteFile(iconFilePath.c_str());
+								MoveFile(tempfilebuf, iconFilePath.c_str());
+								link.SetIconLocation(iconFilePath.c_str());
+								link.SetIconLocationIndex(0);
+								link.Save(it->c_str());
+							} 
+						}
 					}
-					if (isIcon)
-					{
-						// store the icons in the users appdata folder
-						// the name of the icon is the name of the favorite url file but with .ico instead of .url extension
-						FavIconPath;
-						wstring filename = *it;
-						filename = filename.substr(filename.find_last_of('\\'));
-						filename = filename.substr(0, filename.find_last_of('.'));
-						filename = filename + _T(".ico");
-						wstring iconFilePath = FavIconPath;
-						iconFilePath = iconFilePath + _T("\\") + filename;
-						DeleteFile(iconFilePath.c_str());
-						MoveFile(tempfilebuf, iconFilePath.c_str());
-						link.SetIconLocation(iconFilePath.c_str());
-						link.SetIconLocationIndex(0);
-						link.Save(it->c_str());
-					} 
 				}
 			}
 		}
