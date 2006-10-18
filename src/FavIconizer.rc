@@ -120,15 +120,18 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // Dialog
 //
 
-IDD_MAINDLG DIALOGEX 0, 0, 143, 116
+IDD_MAINDLG DIALOGEX 0, 0, 143, 153
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "FavIconizer"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
-    PUSHBUTTON      "&Exit",IDOK,86,95,50,14
+    PUSHBUTTON      "&Exit",IDOK,86,131,50,14
     LTEXT           "You can either find only favicons for links which don't already have them, or get the favicons of all the links in your favorites folder.",IDC_STATIC,7,7,129,37
     DEFPUSHBUTTON   "Find &missing FavIcons",IDC_FINDMISSING,22,50,99,14
     PUSHBUTTON      "Rescan &all links",IDC_FINDALL,22,74,99,14
+    LTEXT           "",IDC_PROGLINE1,7,95,129,8
+    LTEXT           "",IDC_PROGLINE2,7,106,129,8
+    CONTROL         "",IDC_PROGRESS,"msctls_progress32",WS_BORDER,7,118,129,11
 END
 
 
@@ -146,7 +149,7 @@ BEGIN
         RIGHTMARGIN, 136
         VERTGUIDE, 136
         TOPMARGIN, 7
-        BOTTOMMARGIN, 109
+        BOTTOMMARGIN, 145
     END
 END
 #endif    // APSTUDIO_INVOKED
