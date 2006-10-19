@@ -204,13 +204,13 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 		if (_tcsncmp(_T("http"), link.GetPath().c_str(), 4)==0)
 		{
 			//yes, it's an url to http
+			iconURL.clear();
 			TCHAR cachefile[MAX_PATH*2];
-			if (SUCCEEDED(URLDownloadToCacheFile(NULL, link.GetPath().c_str(), cachefile, MAX_PATH*4, 0, NULL)))
+			if (URLDownloadToCacheFile(NULL, link.GetPath().c_str(), cachefile, MAX_PATH*4, 0, NULL)==S_OK)
 			{
 				FILE *stream;
 				errno_t err;
 
-				iconURL.clear();
 				// Open for read
 				if ((err  = _tfopen_s(&stream, cachefile, _T("r") )) == 0)
 				{
@@ -293,8 +293,8 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 			if (!iconURL.empty())
 			{
 				// now download the icon file
-				TCHAR tempfilebuf[MAX_PATH*4];
-				TCHAR buf[MAX_PATH];
+				TCHAR tempfilebuf[MAX_PATH*4] = {0};
+				TCHAR buf[MAX_PATH] = {0};
 				if (GetTempPath(MAX_PATH, buf))
 				{
 					if (GetTempFileName(buf, _T("fav"), 0, tempfilebuf))
@@ -302,7 +302,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 						_tcscat_s(tempfilebuf, MAX_PATH*4, _T(".ico"));
 						if (g_bUserCancelled)
 							break;
-						if (SUCCEEDED(URLDownloadToFile(NULL, iconURL.c_str(), tempfilebuf, 0, NULL)))
+						if (URLDownloadToFile(NULL, iconURL.c_str(), tempfilebuf, 0, NULL) == S_OK)
 						{
 							// we have downloaded a file, but is it really an icon or maybe a 404 html page?
 							bool isIcon = false;
