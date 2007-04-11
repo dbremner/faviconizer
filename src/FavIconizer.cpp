@@ -6,6 +6,7 @@
 #include "DirFileEnum.h"
 #include "shelllink.h"
 #include <vector>
+#include "shlwapi.h"
 
 #include "regexpr2.h"
 using namespace std;
@@ -19,6 +20,7 @@ using namespace regex;
 
 
 #pragma comment(lib, "Urlmon")
+#pragma comment(lib, "shlwapi")
 
 #define MAX_LOADSTRING 100
 
@@ -127,6 +129,10 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 		return EndThreadWithError(hwndDlg);
 	}
 	CreateDirectory(FavIconPath, NULL);
+	if (!PathIsDirectory(FavIconPath))
+	{
+		return EndThreadWithError(hwndDlg);
+	}
 
 	SetWindowText(GetDlgItem(hwndDlg, IDOK), _T("&Cancel"));
 
@@ -184,7 +190,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 
 	// regex pattern to match <link rel="icon" href="some/url" type=image/ico>
 	// or <link rel="icon" href="some/url" type=image/x-icon>
-	rpattern pat(_T("<link[ \\t\\r\\n]*rel[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"icon\\\"[ \\t\\r\\n]*href[ \\t\\r\\n]*=[ \\t\\r\\n]*(.*?)[ \\t\\r\\n]*type[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"image/(ico|x-icon)\\\"[ \\t\\r\\n]*>"), _T(""), NOCASE|NORMALIZE|MULTILINE);
+	rpattern pat(_T("<link[ \\t\\r\\n]*rel[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"(shortcut )?icon\\\"[ \\t\\r\\n]*href[ \\t\\r\\n]*=[ \\t\\r\\n]*(.*?)[ \\t\\r\\n]*(type[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"image/(ico|x-icon)\\\"[ \\t\\r\\n]*)?>"), _T(""), NOCASE|NORMALIZE|MULTILINE);
 
 	int count = 0;
 	for (std::vector<std::wstring>::iterator it = filelist.begin(); it != filelist.end(); ++it)
@@ -219,8 +225,8 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 					size_t len = fread(buffer, sizeof(char), 60000, stream);
 					if (len > 0)
 					{
-						TCHAR tbuf[60000];
-						if (MultiByteToWideChar(CP_ACP, 0, buffer, len, tbuf, 60000))
+						TCHAR tbuf[70000];
+						if (MultiByteToWideChar(CP_ACP, 0, buffer, len, tbuf, 70000))
 						{
 							wstring reMsg = wstring(tbuf, len);
 							try
@@ -230,9 +236,9 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 
 								if (br.matched)
 								{
-									if (results.rlength(1)>0)
+									if (results.rlength(2)>0)
 									{
-										iconURL = results.backref(1).str();
+										iconURL = results.backref(2).str();
 									}
 								}
 							}
