@@ -5,6 +5,7 @@
 #include "FavIconizer.h"
 #include "DirFileEnum.h"
 #include "shelllink.h"
+#include "Debug.h"
 #include <vector>
 #include "shlwapi.h"
 
@@ -244,10 +245,15 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 							}
 							catch (...)
 							{
+								TRACE(_T("regex error parsing html file\n"));
 							}
 							fclose(stream);
 						}
 					}
+				}
+				else
+				{
+					TRACE(_T("error opening html file\n"));
 				}
 				if (iconURL.empty())
 				{
@@ -321,6 +327,10 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 									isIcon = IsIconOrBmp(pBuffer, numread);
 								fclose(iconfile);
 								delete pBuffer;
+							}
+							else
+							{
+								TRACE(_T("error opening icon file\n"));
 							}
 							if (isIcon)
 							{
