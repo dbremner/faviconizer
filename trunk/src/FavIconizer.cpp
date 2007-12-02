@@ -191,7 +191,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 
 	// regex pattern to match <link rel="icon" href="some/url" type=image/ico>
 	// or <link rel="icon" href="some/url" type=image/x-icon>
-	rpattern pat(_T("<link[ \\t\\r\\n]*rel[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"(shortcut )?icon\\\"[ \\t\\r\\n]*href[ \\t\\r\\n]*=[ \\t\\r\\n]*(.*?)[ \\t\\r\\n]*(type[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"image/(ico|x-icon)\\\"[ \\t\\r\\n]*)?>"), _T(""), NOCASE|NORMALIZE|MULTILINE);
+	rpattern pat(_T("<link[ \\t\\r\\n]*rel[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"(shortcut )?icon\\\"[ \\t\\r\\n]*href[ \\t\\r\\n]*=[ \\t\\r\\n\"]*(.*?)[ \\t\\r\\n\"]*(type[ \\t\\r\\n]*=[ \\t\\r\\n\"]*\\\"image/(ico|x-icon)\\\"[ \\t\\r\\n\"/]*)?>"), _T(""), NOCASE|NORMALIZE|MULTILINE);
 
 	int count = 0;
 	for (std::vector<std::wstring>::iterator it = filelist.begin(); it != filelist.end(); ++it)
