@@ -293,10 +293,17 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 						}
 						else
 						{
-							size_t slashpos = link.GetPath().find_last_of('/');
-							if (slashpos != wstring::npos)
+							if (link.GetPath().at(link.GetPath().size()-1) != '/')
 							{
-								iconURL = link.GetPath().substr(0, slashpos) + iconURL;
+								size_t slashpos = link.GetPath().find_last_of('/');
+								if (slashpos != wstring::npos)
+								{
+									iconURL = link.GetPath().substr(0, slashpos) + iconURL;
+								}
+							}
+							else
+							{
+								iconURL = link.GetPath() + iconURL;
 							}
 						}
 					}
