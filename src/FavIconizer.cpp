@@ -191,7 +191,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 
 	// regex pattern to match <link rel="icon" href="some/url" type=image/ico>
 	// or <link rel="icon" href="some/url" type=image/x-icon>
-	rpattern pat(_T("<link[ \\t\\r\\n]*rel[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"(shortcut )?icon\\\"[ \\t\\r\\n]*href[ \\t\\r\\n]*=[ \\t\\r\\n\"]*(.*?)[ \\t\\r\\n\"]*(type[ \\t\\r\\n]*=[ \\t\\r\\n\"]*\\\"image/(ico|x-icon)\\\"[ \\t\\r\\n\"/]*)?>"), _T(""), NOCASE|NORMALIZE|MULTILINE);
+	rpattern pat(_T("<link[ \\t\\r\\n]*rel[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"(shortcut )?icon\\\"[ \\t\\r\\n]*href[ \\t\\r\\n]*=[ \\t\\r\\n\"]*(.*?)[ \\t\\r\\n\"/]*(type[ \\t\\r\\n]*=[ \\t\\r\\n\"]*\\\"image/(ico|x-icon|png|gif)\\\"[ \\t\\r\\n\"/]*)?>"), _T(""), NOCASE|NORMALIZE|MULTILINE);
 
 	int count = 0;
 	for (std::vector<std::wstring>::iterator it = filelist.begin(); it != filelist.end(); ++it)
@@ -347,7 +347,8 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 								wstring filename = *it;
 								filename = filename.substr(filename.find_last_of('\\'));
 								filename = filename.substr(0, filename.find_last_of('.'));
-								filename = filename + _T(".ico");
+								wstring ext = iconURL.substr(iconURL.find_last_of('.'));
+								filename = filename + ext;
 								wstring iconFilePath = FavIconPath;
 								iconFilePath = iconFilePath + _T("\\") + filename;
 								DeleteFile(iconFilePath.c_str());
@@ -484,7 +485,16 @@ checkifbmp:
 	if ((dwLen < sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER))||
 		(pBmpFileHeader->bfType != BM)||
 		(pBmpFileHeader->bfSize != dwLen))
-		return false;
+		goto checkifpngorgif;
+
+	return true;
+
+checkifpngorgif:
+	const char * pngheader = (const char *) pBuffer;
+
+	if (_strnicmp(pngheader+1, "png", 3))
+		if (_strnicmp(pngheader, "gif", 3))
+			return false;
 
 	return true;
 }
