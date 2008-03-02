@@ -265,6 +265,10 @@
 				RelativePath=".\small.ico"
 				>
 			</File>
+			<File
+				RelativePath=".\uac.manifest"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="GRETA"
