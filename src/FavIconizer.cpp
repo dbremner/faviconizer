@@ -325,13 +325,21 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 						{
 							// we have downloaded a file, but is it really an icon or maybe a 404 html page?
 							bool isIcon = false;
+							bool isPNG = false;
+							bool isGIF = false;
 							FILE * iconfile = NULL;
 							if (_tfopen_s(&iconfile, tempfilebuf, _T("r"))==0)
 							{
 								BYTE* pBuffer = new BYTE[1024];
 								size_t numread = fread(pBuffer, sizeof(BYTE), 1024, iconfile);
 								if (numread > 0)
+								{
 									isIcon = IsIconOrBmp(pBuffer, numread);
+									if (_strnicmp((const char *)(pBuffer+1), "png", 3) == 0)
+										isPNG = true;
+									if (_strnicmp((const char *)pBuffer, "gif", 3) == 0)
+										isGIF = true;
+								}
 								fclose(iconfile);
 								delete pBuffer;
 							}
@@ -348,6 +356,13 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 								filename = filename.substr(filename.find_last_of('\\'));
 								filename = filename.substr(0, filename.find_last_of('.'));
 								wstring ext = iconURL.substr(iconURL.find_last_of('.'));
+								if (ext.compare(_T(".ico")) == 0)
+								{
+									if (isPNG)
+										ext = _T(".png");
+									if (isGIF)
+										ext = _T(".gif");
+								}
 								filename = filename + ext;
 								wstring iconFilePath = FavIconPath;
 								iconFilePath = iconFilePath + _T("\\") + filename;
