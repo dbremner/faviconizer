@@ -23,10 +23,9 @@
 #include "Debug.h"
 #include <vector>
 #include "shlwapi.h"
+#include <regex>
 
-#include "regexpr2.h"
 using namespace std;
-using namespace regex;
 
 #ifndef WIN64
 #	pragma comment(linker, "\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='X86' publicKeyToken='6595b64144ccf1df' language='*'\"")
@@ -206,7 +205,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 
 	// regex pattern to match <link rel="icon" href="some/url" type=image/ico>
 	// or <link rel="icon" href="some/url" type=image/x-icon>
-	rpattern pat(_T("<link[ \\t\\r\\n]*rel[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"(shortcut )?icon\\\"[ \\t\\r\\n]*href[ \\t\\r\\n]*=[ \\t\\r\\n\"]*(.*?)[ \\t\\r\\n\"/]*(type[ \\t\\r\\n]*=[ \\t\\r\\n\"]*\\\"image/(ico|x-icon|png|gif)\\\"[ \\t\\r\\n\"/]*)?>"), _T(""), NOCASE|NORMALIZE|MULTILINE);
+	const tr1::wregex pat(_T("<link[ \\t\\r\\n]*rel[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"(shortcut )?icon\\\"[ \\t\\r\\n]*href[ \\t\\r\\n]*=[ \\t\\r\\n\"]*(.*?)[ \\t\\r\\n\"/]*(type[ \\t\\r\\n]*=[ \\t\\r\\n\"]*\\\"image/(ico|x-icon|png|gif)\\\"[ \\t\\r\\n\"/]*)?>"), tr1::regex_constants::icase | tr1::regex_constants::collate | tr1::regex_constants::ECMAScript);
 
 	int count = 0;
 	for (std::vector<std::wstring>::iterator it = filelist.begin(); it != filelist.end(); ++it)
@@ -227,8 +226,11 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 		{
 			//yes, it's an url to http
 			iconURL.clear();
-			TCHAR cachefile[MAX_PATH*2];
-			if (URLDownloadToCacheFile(NULL, link.GetPath().c_str(), cachefile, MAX_PATH*4, 0, NULL)==S_OK)
+			TCHAR cachefile[MAX_PATH*2] = {0};
+			TCHAR cachefolder[MAX_PATH] = {0};
+			GetTempPath(MAX_PATH, cachefolder);
+			GetTempFileName(cachefolder, _T("fvi"), 0, cachefile);
+			if (URLDownloadToFile(NULL, link.GetPath().c_str(), cachefile, 0, NULL)==S_OK)
 			{
 				FILE *stream;
 				errno_t err;
@@ -247,14 +249,13 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 							wstring reMsg = wstring(tbuf, len);
 							try
 							{
-								match_results results;
-								match_results::backref_type br = pat.match(reMsg, results);
-
-								if (br.matched)
+								const tr1::wsregex_iterator endre;
+								for (tr1::wsregex_iterator itre(reMsg.begin(), reMsg.end(), pat); itre != endre; ++itre)
 								{
-									if (results.rlength(2)>0)
+									const tr1::wsmatch match = *itre;
+									if (match.size() > 2)
 									{
-										iconURL = results.backref(2).str();
+										iconURL = wstring(match[2]).c_str();
 									}
 								}
 							}
@@ -391,6 +392,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 					}
 				}
 			}
+			DeleteFile(cachefile);
 		}
 		count++;
 		if (g_bUserCancelled)
