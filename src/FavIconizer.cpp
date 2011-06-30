@@ -1,6 +1,6 @@
 // FavIconizer
 
-// Copyright (C) 2007-2008 - Stefan Kueng
+// Copyright (C) 2007-2008, 2011 - Stefan Kueng
 
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -23,6 +23,7 @@
 #include "Debug.h"
 #include <vector>
 #include "shlwapi.h"
+#include "Shellapi.h"
 #include <regex>
 
 using namespace std;
@@ -36,6 +37,7 @@ using namespace std;
 
 #pragma comment(lib, "Urlmon")
 #pragma comment(lib, "shlwapi")
+#pragma comment(lib, "Shell32.lib")
 
 #define MAX_LOADSTRING 100
 
@@ -486,6 +488,31 @@ INT_PTR CALLBACK MainDlg(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
                 CreateThread(NULL, NULL, ScanThread, hDlg, 0, NULL);
             }
         }
+        if (LOWORD(wParam) == IDC_OPENFOLDER)
+        {
+            //first get the favorites folder of the current user
+            TCHAR FavPath[MAX_PATH];
+            if (!SHGetSpecialFolderPath(NULL, FavPath, CSIDL_FAVORITES, FALSE))
+            {
+                //no favorites folder?
+                MessageBox(hDlg, _T("could not locate your favorites folder!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
+                return FALSE;
+            }
+            TCHAR FavIconPath[MAX_PATH];
+            if (!SHGetSpecialFolderPath(NULL, FavIconPath, CSIDL_APPDATA, FALSE))
+            {
+                //no favorites folder?
+                MessageBox(hDlg, _T("could not locate the %APPDATA% folder!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
+                return FALSE;
+            }
+            _tcscat_s(FavIconPath, MAX_PATH, _T("\\FavIconizer"));
+            ShellExecute(hDlg, NULL, FavPath, NULL, NULL, SW_SHOWNORMAL);
+            if ((GetKeyState(VK_SHIFT)&0x8000) && PathIsDirectory(FavIconPath))
+            {
+                ShellExecute(hDlg, NULL, FavIconPath, NULL, NULL, SW_SHOWNORMAL);
+            }
+        }
+
         break;
     }
     return (INT_PTR)FALSE;
