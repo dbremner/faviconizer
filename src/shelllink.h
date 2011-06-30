@@ -32,19 +32,19 @@ public:
   CShellLinkInfo(const CShellLinkInfo& sli);
   ~CShellLinkInfo();
 
-//Methods 
+//Methods
   CShellLinkInfo& operator=(const CShellLinkInfo& sli);
 
 //Variables
-  std::wstring	m_sTarget;
-  LPITEMIDLIST	m_pidl;
-  std::wstring	m_sArguments;
-  std::wstring	m_sDescription;
-  WORD			m_wHotkey;
-  std::wstring	m_sIconLocation;
-  int			m_nIconIndex;
-  int			m_nShowCmd;
-  std::wstring	m_sWorkingDirectory;
+  std::wstring  m_sTarget;
+  LPITEMIDLIST  m_pidl;
+  std::wstring  m_sArguments;
+  std::wstring  m_sDescription;
+  WORD          m_wHotkey;
+  std::wstring  m_sIconLocation;
+  int           m_nIconIndex;
+  int           m_nShowCmd;
+  std::wstring  m_sWorkingDirectory;
 };
 
 
@@ -63,15 +63,15 @@ public:
   BOOL Resolve(HWND hParentWnd, DWORD dwFlags);
 
 //Accessors
-  std::wstring	GetPath() const;
-  LPITEMIDLIST	GetPathIDList() const;
-  std::wstring	GetArguments() const;
-  std::wstring	GetDescription() const;
-  WORD			GetHotKey() const;
-  std::wstring	GetIconLocation() const;
-  int			GetIconLocationIndex() const;
-  int			GetShowCommand() const;
-  std::wstring	GetWorkingDirectory() const;
+  std::wstring  GetPath() const;
+  LPITEMIDLIST  GetPathIDList() const;
+  std::wstring  GetArguments() const;
+  std::wstring  GetDescription() const;
+  WORD          GetHotKey() const;
+  std::wstring  GetIconLocation() const;
+  int           GetIconLocationIndex() const;
+  int           GetShowCommand() const;
+  std::wstring  GetWorkingDirectory() const;
 
 //Mutators
   void SetPath(const std::wstring& sPath);
