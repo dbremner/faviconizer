@@ -1,6 +1,6 @@
 // FavIconizer
 
-// Copyright (C) 2007-2008, 2011 - Stefan Kueng
+// Copyright (C) 2007-2008, 2011-2012 - Stefan Kueng
 
 // This program is free software; you can redistribute it and/or
 // modify it under the terms of the GNU General Public License
@@ -155,7 +155,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 
     std::vector<std::wstring> filelist;
     CDirFileEnum fileenumerator(FavPath);
-    TCHAR currentPath[MAX_PATH];
+    std::wstring currentPath;
     bool bIsDir = false;
     int nTotalLinks = 0;
     while (fileenumerator.NextFile(currentPath, &bIsDir))
@@ -163,7 +163,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
         if (!bIsDir)    // exclude directories
         {
             // also exclude non-url files
-            size_t len = _tcslen(currentPath);
+            size_t len = currentPath.size();
             if (_tcsicmp(&currentPath[len-4], _T(".url"))==0)
             {
                 nTotalLinks++;
