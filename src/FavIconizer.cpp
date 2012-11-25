@@ -187,7 +187,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
         MessageBox(hwndDlg, _T("No favorite links found to check!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
         return EndThreadWithError(hwndDlg);
     }
-    if ((filelist.size() == 0)&&(!g_bFetchAll))
+    if ((filelist.empty()) && (!g_bFetchAll))
     {
         MessageBox(hwndDlg, _T("All favorite links already have a favicon!"), szTitle, MB_OK | MB_ICONINFORMATION);
         return EndThreadWithError(hwndDlg);
@@ -331,10 +331,10 @@ DWORD WINAPI ScanThread(LPVOID lParam)
             if (!iconURL.empty())
             {
                 // now download the icon file
-                TCHAR tempfilebuf[MAX_PATH*4] = {0};
                 TCHAR buf[MAX_PATH] = {0};
                 if (GetTempPath(MAX_PATH, buf))
                 {
+                    TCHAR tempfilebuf[MAX_PATH*4] = {0};
                     if (GetTempFileName(buf, _T("fav"), 0, tempfilebuf))
                     {
                         _tcscat_s(tempfilebuf, MAX_PATH*4, _T(".ico"));
@@ -360,7 +360,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                                         isGIF = true;
                                 }
                                 fclose(iconfile);
-                                delete pBuffer;
+                                delete [] pBuffer;
                             }
                             else
                             {
