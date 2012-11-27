@@ -27,8 +27,6 @@
 #include "Shellapi.h"
 #include <regex>
 
-using namespace std;
-
 #ifndef WIN64
 #   pragma comment(linker, "\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='X86' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #else
@@ -204,11 +202,11 @@ DWORD WINAPI ScanThread(LPVOID lParam)
     SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS), PBM_SETRANGE32, 0, filelist.size());
     SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS), PBM_SETSTEP, 1, 0);
 
-    wstring iconURL;
+    std::wstring iconURL;
 
     // regex pattern to match <link rel="icon" href="some/url" type=image/ico>
     // or <link rel="icon" href="some/url" type=image/x-icon>
-    const tr1::wregex pat(_T("<link[ \\t\\r\\n]*rel[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"(shortcut )?icon\\\"[ \\t\\r\\n]*href[ \\t\\r\\n]*=[ \\t\\r\\n\"]*(.*?)[ \\t\\r\\n\"/]*(type[ \\t\\r\\n]*=[ \\t\\r\\n\"]*\\\"image/(ico|x-icon|png|gif)\\\"[ \\t\\r\\n\"/]*)?>"), tr1::regex_constants::icase | tr1::regex_constants::collate | tr1::regex_constants::ECMAScript);
+    const std::tr1::wregex pat(_T("<link[ \\t\\r\\n]*rel[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"(shortcut )?icon\\\"[ \\t\\r\\n]*href[ \\t\\r\\n]*=[ \\t\\r\\n\"]*(.*?)[ \\t\\r\\n\"/]*(type[ \\t\\r\\n]*=[ \\t\\r\\n\"]*\\\"image/(ico|x-icon|png|gif)\\\"[ \\t\\r\\n\"/]*)?>"), std::tr1::regex_constants::icase | std::tr1::regex_constants::collate | std::tr1::regex_constants::ECMAScript);
 
     int count = 0;
     for (std::vector<std::wstring>::iterator it = filelist.begin(); it != filelist.end(); ++it)
@@ -249,16 +247,16 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                         TCHAR tbuf[70000];
                         if (MultiByteToWideChar(CP_ACP, 0, buffer, len, tbuf, 70000))
                         {
-                            wstring reMsg = wstring(tbuf, len);
+                            std::wstring reMsg = std::wstring(tbuf, len);
                             try
                             {
-                                const tr1::wsregex_iterator endre;
-                                for (tr1::wsregex_iterator itre(reMsg.begin(), reMsg.end(), pat); itre != endre; ++itre)
+                                const std::tr1::wsregex_iterator endre;
+                                for (std::tr1::wsregex_iterator itre(reMsg.begin(), reMsg.end(), pat); itre != endre; ++itre)
                                 {
-                                    const tr1::wsmatch match = *itre;
+                                    const std::tr1::wsmatch match = *itre;
                                     if (match.size() > 2)
                                     {
-                                        iconURL = wstring(match[2]).c_str();
+                                        iconURL = std::wstring(match[2]).c_str();
                                     }
                                 }
                             }
@@ -280,10 +278,10 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                     size_t off = 0;
                     iconURL = link.GetPath();
                     off = iconURL.find(':');
-                    if (off != string::npos)
+                    if (off != std::string::npos)
                     {
                         off = iconURL.find('/', off+3);
-                        if (off != string::npos)
+                        if (off != std::string::npos)
                         {
                             iconURL = iconURL.substr(0, off);
                             iconURL += _T("/favicon.ico");
@@ -301,10 +299,10 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                             size_t off = 0;
                             iconURL = link.GetPath();
                             off = iconURL.find(':');
-                            if (off != string::npos)
+                            if (off != std::string::npos)
                             {
                                 off = iconURL.find('/', off+1);
-                                if (off != string::npos)
+                                if (off != std::string::npos)
                                 {
                                     iconURL = iconURL.substr(0, off) + _T("/") + iconURL;
                                 }
@@ -315,7 +313,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                             if (link.GetPath().at(link.GetPath().size()-1) != '/')
                             {
                                 size_t slashpos = link.GetPath().find_last_of('/');
-                                if (slashpos != wstring::npos)
+                                if (slashpos != std::wstring::npos)
                                 {
                                     iconURL = link.GetPath().substr(0, slashpos) + iconURL;
                                 }
@@ -371,10 +369,10 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                                 // store the icons in the users appdata folder
                                 // the name of the icon is the name of the favorite url file but with .ico instead of .url extension
                                 FavIconPath;
-                                wstring filename = *it;
+                                std::wstring filename = *it;
                                 filename = filename.substr(filename.find_last_of('\\'));
                                 filename = filename.substr(0, filename.find_last_of('.'));
-                                wstring ext = iconURL.substr(iconURL.find_last_of('.'));
+                                std::wstring ext = iconURL.substr(iconURL.find_last_of('.'));
                                 if (ext.compare(_T(".ico")) == 0)
                                 {
                                     if (isPNG)
@@ -383,7 +381,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                                         ext = _T(".gif");
                                 }
                                 filename = filename + ext;
-                                wstring iconFilePath = FavIconPath;
+                                std::wstring iconFilePath = FavIconPath;
                                 iconFilePath = iconFilePath + _T("\\") + filename;
                                 DeleteFile(iconFilePath.c_str());
                                 MoveFile(tempfilebuf, iconFilePath.c_str());
