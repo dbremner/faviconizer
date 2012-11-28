@@ -71,9 +71,9 @@ CAPTION "FavIconizer"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     LTEXT           "You can either find only favicons for links which don't already have them, or get the favicons of all the links in your favorites folder.",IDC_STATIC,7,7,129,37
-    DEFPUSHBUTTON   "Find &missing FavIcons",IDC_FINDMISSING,22,50,99,14
+    DEFPUSHBUTTON   "Find &missing favicons",IDC_FINDMISSING,22,50,99,14
     PUSHBUTTON      "Rescan &all links",IDC_FINDALL,22,71,99,14
-    PUSHBUTTON      "Open FavIcon folder",IDC_OPENFOLDER,22,92,99,14
+    PUSHBUTTON      "Open favicons folder",IDC_OPENFOLDER,22,92,99,14
     LTEXT           "",IDC_PROGLINE1,7,110,129,8
     PUSHBUTTON      "&Exit",IDOK,86,147,50,14
     LTEXT           "",IDC_PROGLINE2,7,121,129,8
