@@ -19,49 +19,18 @@
 
 #include "stdafx.h"
 #include "FavIconizer.h"
+#include "resource.h"
 #include "DirFileEnum.h"
 #include "shelllink.h"
 #include "Debug.h"
 #include <vector>
-#include "shlwapi.h"
-#include "Shellapi.h"
+#include <Shlwapi.h>
+#include <ShellAPI.h>
 #include <regex>
 
-#ifndef WIN64
-#   pragma comment(linker, "\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='X86' publicKeyToken='6595b64144ccf1df' language='*'\"")
-#else
-#   pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='amd64' publicKeyToken='6595b64144ccf1df' language='*'\"")
-#endif
-
-
-#pragma comment(lib, "Urlmon")
-#pragma comment(lib, "shlwapi")
-#pragma comment(lib, "Shell32.lib")
 
 #define MAX_LOADSTRING 100
-
-typedef struct tagICONDIRENTRY
-{
-    BYTE  bWidth;
-    BYTE  bHeight;
-    BYTE  bColorCount;
-    BYTE  bReserved;
-    WORD  wPlanes;
-    WORD  wBitCount;
-    DWORD dwBytesInRes;
-    DWORD dwImageOffset;
-} ICONDIRENTRY;
-
-typedef struct ICONHEADER
-{
-    WORD          idReserved;
-    WORD          idType;
-    WORD          idCount;
-    ICONDIRENTRY  idEntries[1];
-} ICONHEADER;
-
 #define BM 0x4D42
-
 
 
 // Global Variables:
@@ -71,15 +40,10 @@ volatile LONG g_bThreadRunning = FALSE;
 volatile LONG g_bUserCancelled = FALSE;
 bool g_bFetchAll = false;
 
-// Forward declarations of functions included in this code module:
-INT_PTR CALLBACK    MainDlg(HWND, UINT, WPARAM, LPARAM);
-bool IsIconOrBmp(BYTE* pBuffer, DWORD dwLen);
-DWORD EndThreadWithError(HWND hwndDlg);
-
 int APIENTRY _tWinMain(HINSTANCE hInstance,
-                     HINSTANCE hPrevInstance,
-                     LPTSTR    lpCmdLine,
-                     int       nCmdShow)
+                       HINSTANCE hPrevInstance,
+                       LPTSTR    lpCmdLine,
+                       int       nCmdShow)
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
@@ -169,7 +133,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                 CUrlShellLink link;
                 if (!link.Load(currentPath))
                     continue;
-                if ((!link.GetIconLocation().empty())&&(!link.GetIconLocation().substr(0, 4).compare(_T("http"))==0))
+                if ((!link.GetIconLocation().empty()) && (!link.GetIconLocation().substr(0, 4).compare(_T("http")) == 0))
                 {
                     // link already has a non-url icon path
                     if (!g_bFetchAll)
@@ -195,7 +159,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
     if (nTotalLinks == (int)filelist.size())
         _stprintf_s(sText, 4096, _T("Checking link %ld of %ld..."), 0, nTotalLinks);
     else
-        _stprintf_s(sText, 4096, _T("Checking link %ld of %ld, skipping %ld links..."), 0, filelist.size(), nTotalLinks-filelist.size());
+        _stprintf_s(sText, 4096, _T("Checking link %ld of %ld, skipping %ld links..."), 0, filelist.size(), nTotalLinks - filelist.size());
     SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE1), sText);
     // start with no progress
     ShowWindow(GetDlgItem(hwndDlg, IDC_PROGRESS), SW_SHOW);
@@ -225,9 +189,9 @@ DWORD WINAPI ScanThread(LPVOID lParam)
         SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS), PBM_STEPIT, 0, 0);
         if (_tcsncmp(_T("http"), link.GetPath().c_str(), 4)==0)
         {
-            //yes, it's an url to http
+            //yes, it's a url to http
             iconURL.clear();
-            TCHAR cachefile[MAX_PATH*2] = {0};
+            TCHAR cachefile[MAX_PATH * 2] = {0};
             TCHAR cachefolder[MAX_PATH] = {0};
             GetTempPath(MAX_PATH, cachefolder);
             GetTempFileName(cachefolder, _T("fvi"), 0, cachefile);
@@ -237,7 +201,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                 errno_t err;
 
                 // Open for read
-                if ((err  = _tfopen_s(&stream, cachefile, _T("r") )) == 0)
+                if ((err = _tfopen_s(&stream, cachefile, _T("r") )) == 0)
                 {
                     // 60'000 bytes should be enough to find the <link...> tag
                     char buffer[60000];
@@ -290,7 +254,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                 }
                 else
                 {
-                    if (_tcsnicmp(iconURL.c_str(), _T("http://"), 7)!=0)
+                    if (_tcsnicmp(iconURL.c_str(), _T("http://"), 7) != 0)
                     {
                         // not an absolute url but a relative one
                         // we need to create an absolute url
@@ -332,10 +296,10 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                 TCHAR buf[MAX_PATH] = {0};
                 if (GetTempPath(MAX_PATH, buf))
                 {
-                    TCHAR tempfilebuf[MAX_PATH*4] = {0};
+                    TCHAR tempfilebuf[MAX_PATH * 4] = {0};
                     if (GetTempFileName(buf, _T("fav"), 0, tempfilebuf))
                     {
-                        _tcscat_s(tempfilebuf, MAX_PATH*4, _T(".ico"));
+                        _tcscat_s(tempfilebuf, MAX_PATH * 4, _T(".ico"));
                         if (g_bUserCancelled)
                             break;
                         if (URLDownloadToFile(NULL, iconURL.c_str(), tempfilebuf, 0, NULL) == S_OK)
@@ -446,7 +410,7 @@ INT_PTR CALLBACK MainDlg(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
             OffsetRect(&rc, -rc.left, -rc.top);
             OffsetRect(&rc, -rcDlg.right, -rcDlg.bottom);
 
-            SetWindowPos(hDlg, HWND_TOP, rcOwner.left + (rc.right / 2), rcOwner.top + (rc.bottom / 2), 0, 0,    SWP_NOSIZE);
+            SetWindowPos(hDlg, HWND_TOP, rcOwner.left + (rc.right / 2), rcOwner.top + (rc.bottom / 2), 0, 0, SWP_NOSIZE);
             HICON hIcon = (HICON)::LoadImage(hInst, MAKEINTRESOURCE(IDI_FAVICONIZER), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE|LR_SHARED);
             ::SendMessage(hDlg, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
             ::SendMessage(hDlg, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
@@ -522,11 +486,11 @@ bool IsIconOrBmp(BYTE* pBuffer, DWORD dwLen)
 {
     // Quick and dirty check to see if we actually got
     // an icon or a bitmap
-    ICONHEADER*         pIconHeader = (ICONHEADER*) pBuffer;
-    ICONDIRENTRY*       pIconEntry = (ICONDIRENTRY*) (pBuffer + sizeof(WORD) * 3);
+    ICONHEADER*     pIconHeader = (ICONHEADER*) pBuffer;
+    ICONDIRENTRY*   pIconEntry  = (ICONDIRENTRY*) (pBuffer + sizeof(WORD) * 3);
 
-    if ((pIconHeader->idType == 1)&&
-        (pIconHeader->idReserved == 0)&&
+    if ((pIconHeader->idType == 1) &&
+        (pIconHeader->idReserved == 0) &&
         (dwLen >= sizeof(ICONHEADER) + sizeof(ICONDIRENTRY)) )
     {
         if (pIconEntry->dwImageOffset >= dwLen)
@@ -550,10 +514,9 @@ checkifbmp:
 checkifpngorgif:
     const char * pngheader = (const char *) pBuffer;
 
-    if (_strnicmp(pngheader+1, "png", 3))
+    if (_strnicmp(pngheader + 1, "png", 3))
         if (_strnicmp(pngheader, "gif", 3))
             return false;
 
     return true;
 }
-
