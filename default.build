@@ -22,6 +22,16 @@
 			<arg value="release|win32" />
 		</exec>
 
+		<exec program="devenv.com" >
+			<arg value="FavIconizer.sln" />
+			<arg value="/rebuild" />
+			<arg value="debug|x64" />
+		</exec>
+		<exec program="devenv.com" >
+			<arg value="FavIconizer.sln" />
+			<arg value="/rebuild" />
+			<arg value="release|x64" />
+		</exec>
 	</target>
 
 </project>
