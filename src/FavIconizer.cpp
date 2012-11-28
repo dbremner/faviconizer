@@ -18,7 +18,6 @@
 //
 
 #include "stdafx.h"
-#include "FavIconizer.h"
 #include "resource.h"
 #include "DirFileEnum.h"
 #include "shelllink.h"
@@ -28,6 +27,32 @@
 #include <ShellAPI.h>
 #include <regex>
 
+
+typedef struct tagICONDIRENTRY
+{
+    BYTE  bWidth;
+    BYTE  bHeight;
+    BYTE  bColorCount;
+    BYTE  bReserved;
+    WORD  wPlanes;
+    WORD  wBitCount;
+    DWORD dwBytesInRes;
+    DWORD dwImageOffset;
+} ICONDIRENTRY;
+
+typedef struct ICONHEADER
+{
+    WORD          idReserved;
+    WORD          idType;
+    WORD          idCount;
+    ICONDIRENTRY  idEntries[1];
+} ICONHEADER;
+
+
+// Forward declarations of functions included in this code module:
+INT_PTR CALLBACK    MainDlg(HWND, UINT, WPARAM, LPARAM);
+bool IsIconOrBmp(BYTE* pBuffer, DWORD dwLen);
+DWORD EndThreadWithError(HWND hwndDlg);
 
 #define MAX_LOADSTRING 100
 #define BM 0x4D42
