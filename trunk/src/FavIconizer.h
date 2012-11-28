@@ -19,4 +19,27 @@
 
 #pragma once
 
-#include "resource.h"
+typedef struct tagICONDIRENTRY
+{
+    BYTE  bWidth;
+    BYTE  bHeight;
+    BYTE  bColorCount;
+    BYTE  bReserved;
+    WORD  wPlanes;
+    WORD  wBitCount;
+    DWORD dwBytesInRes;
+    DWORD dwImageOffset;
+} ICONDIRENTRY;
+
+typedef struct ICONHEADER
+{
+    WORD          idReserved;
+    WORD          idType;
+    WORD          idCount;
+    ICONDIRENTRY  idEntries[1];
+} ICONHEADER;
+
+
+INT_PTR CALLBACK MainDlg(HWND, UINT, WPARAM, LPARAM);
+bool  IsIconOrBmp(BYTE* pBuffer, DWORD dwLen);
+DWORD EndThreadWithError(HWND hwndDlg);
