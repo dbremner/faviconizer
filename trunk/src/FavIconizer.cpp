@@ -234,7 +234,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                     if (len > 0)
                     {
                         TCHAR tbuf[70000];
-                        if (MultiByteToWideChar(CP_ACP, 0, buffer, len, tbuf, 70000))
+                        if (MultiByteToWideChar(CP_ACP, 0, buffer, (int)len, tbuf, 70000))
                         {
                             std::wstring reMsg = std::wstring(tbuf, len);
                             try
@@ -340,7 +340,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                                 size_t numread = fread(pBuffer, sizeof(BYTE), 1024, iconfile);
                                 if (numread > 0)
                                 {
-                                    isIcon = IsIconOrBmp(pBuffer, numread);
+                                    isIcon = IsIconOrBmp(pBuffer, (DWORD)numread);
                                     if (_strnicmp((const char *)(pBuffer+1), "png", 3) == 0)
                                         isPNG = true;
                                     if (_strnicmp((const char *)pBuffer, "gif", 3) == 0)
