@@ -129,7 +129,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
         return EndThreadWithError(hwndDlg);
     }
 
-    if (_tcscat_s(FavIconPath, MAX_PATH, _T("\\FavIconizer")))
+    if (_tcscat_s(FavIconPath, _countof(FavIconPath), _T("\\FavIconizer")))
     {
         return EndThreadWithError(hwndDlg);
     }
@@ -218,7 +218,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
             iconURL.clear();
             TCHAR cachefile[MAX_PATH * 2] = {0};
             TCHAR cachefolder[MAX_PATH] = {0};
-            GetTempPath(MAX_PATH, cachefolder);
+            GetTempPath(_countof(cachefolder), cachefolder);
             GetTempFileName(cachefolder, _T("fvi"), 0, cachefile);
             if (URLDownloadToFile(NULL, link.GetPath().c_str(), cachefile, 0, NULL)==S_OK)
             {
@@ -493,7 +493,7 @@ INT_PTR CALLBACK MainDlg(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
                 MessageBox(hDlg, _T("could not locate the %APPDATA% folder!"), szTitle, MB_OK | MB_ICONEXCLAMATION);
                 return FALSE;
             }
-            _tcscat_s(FavIconPath, MAX_PATH, _T("\\FavIconizer"));
+            _tcscat_s(FavIconPath, _countof(FavIconPath), _T("\\FavIconizer"));
             ShellExecute(hDlg, NULL, FavPath, NULL, NULL, SW_SHOWNORMAL);
             if ((GetKeyState(VK_SHIFT) & 0x8000) && PathIsDirectory(FavIconPath))
             {
