@@ -50,9 +50,9 @@ typedef struct ICONHEADER
 
 
 // Forward declarations of functions included in this code module:
-INT_PTR CALLBACK    MainDlg(HWND, UINT, WPARAM, LPARAM);
-bool IsIconOrBmp(BYTE* pBuffer, DWORD dwLen);
-DWORD EndThreadWithError(HWND hwndDlg);
+INT_PTR CALLBACK MainDlg(HWND, UINT, WPARAM, LPARAM);
+bool    IsIconOrBmp(BYTE* pBuffer, DWORD dwLen);
+DWORD   EndThreadWithError(HWND hwndDlg);
 
 #define MAX_LOADSTRING 100
 #define BM 0x4D42
@@ -101,7 +101,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
     EnableWindow(GetDlgItem(hwndDlg, IDC_FINDMISSING), TRUE);
     EnableWindow(GetDlgItem(hwndDlg, IDC_FINDALL), TRUE);
 
-    if (::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED)!=S_OK)
+    if (::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED) != S_OK)
     {
         return EndThreadWithError(hwndDlg);
     }
@@ -152,7 +152,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
         {
             // also exclude non-url files
             size_t len = currentPath.size();
-            if (_tcsicmp(&currentPath[len-4], _T(".url"))==0)
+            if (_tcsicmp(&currentPath[len - 4], _T(".url")) == 0)
             {
                 nTotalLinks++;
                 CUrlShellLink link;
@@ -182,9 +182,9 @@ DWORD WINAPI ScanThread(LPVOID lParam)
 
     TCHAR sText[4096];
     if (nTotalLinks == (int)filelist.size())
-        _stprintf_s(sText, 4096, _T("Checking link %ld of %ld..."), 0, nTotalLinks);
+        _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %ld..."), 0, nTotalLinks);
     else
-        _stprintf_s(sText, 4096, _T("Checking link %ld of %ld, skipping %ld links..."), 0, filelist.size(), nTotalLinks - filelist.size());
+        _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %ld, skipping %ld links..."), 0, filelist.size(), nTotalLinks - filelist.size());
     SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE1), sText);
     // start with no progress
     ShowWindow(GetDlgItem(hwndDlg, IDC_PROGRESS), SW_SHOW);
@@ -206,9 +206,9 @@ DWORD WINAPI ScanThread(LPVOID lParam)
         if (g_bUserCancelled)
             break;
         if (nTotalLinks == (int)filelist.size())
-            _stprintf_s(sText, 4096, _T("Checking link %ld of %ld..."), count+1, nTotalLinks);
+            _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %ld..."), count+1, nTotalLinks);
         else
-            _stprintf_s(sText, 4096, _T("Checking link %ld of %ld, skipping %ld links..."), count+1, filelist.size(), nTotalLinks-filelist.size());
+            _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %ld, skipping %ld links..."), count+1, filelist.size(), nTotalLinks-filelist.size());
         SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE1), sText);
         SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE2), link.GetPath().c_str());
         SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS), PBM_STEPIT, 0, 0);
@@ -230,11 +230,11 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                 {
                     // 60'000 bytes should be enough to find the <link...> tag
                     char buffer[60000];
-                    size_t len = fread(buffer, sizeof(char), 60000, stream);
+                    size_t len = fread(buffer, sizeof(char), _countof(buffer), stream);
                     if (len > 0)
                     {
                         TCHAR tbuf[70000];
-                        if (MultiByteToWideChar(CP_ACP, 0, buffer, (int)len, tbuf, 70000))
+                        if (MultiByteToWideChar(CP_ACP, 0, buffer, (int)len, tbuf, _countof(tbuf)))
                         {
                             std::wstring reMsg = std::wstring(tbuf, len);
                             try
@@ -324,7 +324,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                     TCHAR tempfilebuf[MAX_PATH * 4] = {0};
                     if (GetTempFileName(buf, _T("fav"), 0, tempfilebuf))
                     {
-                        _tcscat_s(tempfilebuf, MAX_PATH * 4, _T(".ico"));
+                        _tcscat_s(tempfilebuf, _countof(tempfilebuf), _T(".ico"));
                         if (g_bUserCancelled)
                             break;
                         if (URLDownloadToFile(NULL, iconURL.c_str(), tempfilebuf, 0, NULL) == S_OK)
@@ -334,14 +334,14 @@ DWORD WINAPI ScanThread(LPVOID lParam)
                             bool isPNG = false;
                             bool isGIF = false;
                             FILE * iconfile = NULL;
-                            if (_tfopen_s(&iconfile, tempfilebuf, _T("r"))==0)
+                            if (_tfopen_s(&iconfile, tempfilebuf, _T("r")) == 0)
                             {
                                 BYTE* pBuffer = new BYTE[1024];
                                 size_t numread = fread(pBuffer, sizeof(BYTE), 1024, iconfile);
                                 if (numread > 0)
                                 {
                                     isIcon = IsIconOrBmp(pBuffer, (DWORD)numread);
-                                    if (_strnicmp((const char *)(pBuffer+1), "png", 3) == 0)
+                                    if (_strnicmp((const char *)(pBuffer + 1), "png", 3) == 0)
                                         isPNG = true;
                                     if (_strnicmp((const char *)pBuffer, "gif", 3) == 0)
                                         isGIF = true;
@@ -495,7 +495,7 @@ INT_PTR CALLBACK MainDlg(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
             }
             _tcscat_s(FavIconPath, MAX_PATH, _T("\\FavIconizer"));
             ShellExecute(hDlg, NULL, FavPath, NULL, NULL, SW_SHOWNORMAL);
-            if ((GetKeyState(VK_SHIFT)&0x8000) && PathIsDirectory(FavIconPath))
+            if ((GetKeyState(VK_SHIFT) & 0x8000) && PathIsDirectory(FavIconPath))
             {
                 ShellExecute(hDlg, NULL, FavIconPath, NULL, NULL, SW_SHOWNORMAL);
             }
@@ -516,7 +516,7 @@ bool IsIconOrBmp(BYTE* pBuffer, DWORD dwLen)
 
     if ((pIconHeader->idType == 1) &&
         (pIconHeader->idReserved == 0) &&
-        (dwLen >= sizeof(ICONHEADER) + sizeof(ICONDIRENTRY)) )
+        (dwLen >= sizeof(ICONHEADER) + sizeof(ICONDIRENTRY)))
     {
         if (pIconEntry->dwImageOffset >= dwLen)
             goto checkifbmp;
