@@ -76,7 +76,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
     hInst = hInstance;
     // Initialize global strings
-    LoadString(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
+    LoadString(hInstance, IDS_APP_TITLE, szTitle, _countof(szTitle));
 
     HRESULT hRes = ::CoInitialize(NULL);
     if (!SUCCEEDED(hRes))
