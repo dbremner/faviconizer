@@ -184,7 +184,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
     if (nTotalLinks == (int)filelist.size())
         _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %ld..."), 0, nTotalLinks);
     else
-        _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %ld, skipping %ld links..."), 0, filelist.size(), nTotalLinks - filelist.size());
+        _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %u, skipping %u links..."), 0, filelist.size(), nTotalLinks - filelist.size());
     SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE1), sText);
     // start with no progress
     ShowWindow(GetDlgItem(hwndDlg, IDC_PROGRESS), SW_SHOW);
@@ -208,7 +208,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
         if (nTotalLinks == (int)filelist.size())
             _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %ld..."), count+1, nTotalLinks);
         else
-            _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %ld, skipping %ld links..."), count+1, filelist.size(), nTotalLinks-filelist.size());
+            _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %u, skipping %u links..."), count+1, filelist.size(), nTotalLinks-filelist.size());
         SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE1), sText);
         SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE2), link.GetPath().c_str());
         SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS), PBM_STEPIT, 0, 0);
