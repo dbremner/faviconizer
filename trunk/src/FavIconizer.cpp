@@ -145,7 +145,7 @@ DWORD WINAPI ScanThread(LPVOID lParam)
     CDirFileEnum fileenumerator(FavPath);
     std::wstring currentPath;
     bool bIsDir = false;
-    int nTotalLinks = 0;
+    size_t nTotalLinks = 0;
     while (fileenumerator.NextFile(currentPath, &bIsDir))
     {
         if (!bIsDir)    // exclude directories
@@ -181,10 +181,10 @@ DWORD WINAPI ScanThread(LPVOID lParam)
     }
 
     TCHAR sText[4096];
-    if (nTotalLinks == (int)filelist.size())
-        _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %d..."), 0, nTotalLinks);
+    if (nTotalLinks == filelist.size())
+        _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %Iu..."), 0, nTotalLinks);
     else
-        _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %Iu, skipping %u links..."), 0, filelist.size(), nTotalLinks - filelist.size());
+        _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %Iu, skipping %Iu links..."), 0, filelist.size(), nTotalLinks - filelist.size());
     SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE1), sText);
     // start with no progress
     ShowWindow(GetDlgItem(hwndDlg, IDC_PROGRESS), SW_SHOW);
@@ -197,18 +197,18 @@ DWORD WINAPI ScanThread(LPVOID lParam)
     // or <link rel="icon" href="some/url" type=image/x-icon>
     const std::tr1::wregex pat(_T("<link[ \\t\\r\\n]*rel[ \\t\\r\\n]*=[ \\t\\r\\n]*\\\"(shortcut )?icon\\\"[ \\t\\r\\n]*href[ \\t\\r\\n]*=[ \\t\\r\\n\"]*(.*?)[ \\t\\r\\n\"/]*(type[ \\t\\r\\n]*=[ \\t\\r\\n\"]*\\\"image/(ico|x-icon|png|gif)\\\"[ \\t\\r\\n\"/]*)?>"), std::tr1::regex_constants::icase | std::tr1::regex_constants::collate | std::tr1::regex_constants::ECMAScript);
 
-    int count = 0;
-    for (std::vector<std::wstring>::iterator it = filelist.begin(); it != filelist.end(); ++it)
+    size_t count = 0;
+    for (auto it = filelist.begin(); it != filelist.end(); ++it)
     {
         CUrlShellLink link;
         if (!link.Load(it->c_str()))
             continue;
         if (g_bUserCancelled)
             break;
-        if (nTotalLinks == (int)filelist.size())
-            _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %d..."), count+1, nTotalLinks);
+        if (nTotalLinks == filelist.size())
+            _stprintf_s(sText, _countof(sText), _T("Checking link %Iu of %Iu..."), count+1, nTotalLinks);
         else
-            _stprintf_s(sText, _countof(sText), _T("Checking link %ld of %Iu, skipping %u links..."), count+1, filelist.size(), nTotalLinks-filelist.size());
+            _stprintf_s(sText, _countof(sText), _T("Checking link %Iu of %Iu, skipping %Iu links..."), count+1, filelist.size(), nTotalLinks - filelist.size());
         SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE1), sText);
         SetWindowText(GetDlgItem(hwndDlg, IDC_PROGLINE2), link.GetPath().c_str());
         SendMessage(GetDlgItem(hwndDlg, IDC_PROGRESS), PBM_STEPIT, 0, 0);
