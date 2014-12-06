@@ -5,21 +5,15 @@
 
 #pragma once
 
-// Modify the following defines if you have to target a platform prior to the ones specified below.
-// Refer to MSDN for the latest info on corresponding values for different platforms.
-#ifndef WINVER                  // Allow use of features specific to Windows XP or later.
-#define WINVER 0x0501           // Change this to the appropriate value to target other versions of Windows.
-#endif
+// Including SDKDDKVer.h defines the highest available Windows platform.
 
-#ifndef _WIN32_WINNT            // Allow use of features specific to Windows XP or later.
-#define _WIN32_WINNT 0x0501     // Change this to the appropriate value to target other versions of Windows.
-#endif
+// If you wish to build your application for a previous Windows platform, include WinSDKVer.h and
+// set the _WIN32_WINNT macro to the platform you wish to support before including SDKDDKVer.h.
 
-#ifndef _WIN32_IE               // Allow use of features specific to IE 6.0 or later.
-#define _WIN32_IE 0x0700        // Change this to the appropriate value to target other versions of IE.
-#endif
+#include <SDKDDKVer.h>
 
 #define WIN32_LEAN_AND_MEAN     // Exclude rarely-used stuff from Windows headers
+
 // Windows Header Files:
 #include <windows.h>
 
